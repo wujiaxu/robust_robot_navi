@@ -1,0 +1,101 @@
+{
+    "algo_args":	{
+        "algo":	{
+            "batch_size":	1000,
+            "buffer_size":	1000000,
+            "expl_noise":	0.1,
+            "fixed_order":	false,
+            "gamma":	0.99,
+            "n_step":	1,
+            "polyak":	0.005,
+            "share_param":	false,
+            "policy_freq": 2
+        },
+        "device":	{
+            "cuda":	true,
+            "cuda_deterministic":	true,
+            "torch_threads":	4
+        },
+        "eval":	{
+            "eval_episodes":	20,
+            "n_eval_rollout_threads":	10,
+            "use_eval":	true
+        },
+        "logger":	{
+            "log_dir":	"./single_life_results"
+        },
+        "model":	{
+            "activation_func":	"relu",
+            "critic_lr":	0.0001,
+            "final_activation_func":	"tanh",
+            "hidden_sizes":	[
+                128,
+                128
+            ],
+            "lr":	0.00005
+        },
+        "render":	{
+            "render_episodes":	10,
+            "use_render":	false
+        },
+        "seed":	{
+            "seed":	1,
+            "seed_specify":	true
+        },
+        "train":	{
+            "eval_interval":	1000,
+            "log_interval":	null,
+            "model_dir":	null,
+            "n_rollout_threads":	20,
+            "num_env_steps":	300000,
+            "train_interval":	50,
+            "update_per_train":	1,
+            "use_linear_lr_decay":	false,
+            "use_proper_time_limits":	true,
+            "warmup_steps":	10000
+        }
+    },
+    "env_args":	{
+        "continuous_actions":	true,
+        "discomfort_dist":	1.0,
+        "discomfort_penalty_factor":	0.2,
+        "goal_factor":	2,
+        "goal_range":	0.3,
+        "human_fov":	110,
+        "human_n_scan":	720,
+        "human_num":	4,
+        "human_preference_type":	"category",
+        "human_preference_vector_dim":	6,
+        "human_radius":	0.3,
+        "human_rotation_constrain":	180,
+        "human_v_pref":	1.0,
+        "human_visible":	true,
+        "laser_angle_resolute":	0.008726646,
+        "laser_max_range":	4.0,
+        "laser_min_range":	0.0,
+        "map_size":	8,
+        "max_episode_length":	48,
+        "n_laser":	720,
+        "penalty_backward":	0.2,
+        "penalty_collision":	-20,
+        "reward_goal":	10,
+        "robot_num":	1,
+        "robot_radius":	0.3,
+        "robot_rotation_constrain":	180,
+        "robot_v_pref":	1.0,
+        "robot_visible":	true,
+        "scenario":	"circle_cross",
+        "state_type":	"EP",
+        "task":	"crowd_navi",
+        "use_discriminator":	true,
+        "velo_factor":	0.2,
+        "with_static_obstacle":	true
+    },
+    "main_args":	{
+        "algo":	"robot_crowd_happo",
+        "cuda_device":	"cuda:2",
+        "env":	"crowd_env",
+        "exp_name":	"robust_navi",
+        "load_config":	""
+    }
+}

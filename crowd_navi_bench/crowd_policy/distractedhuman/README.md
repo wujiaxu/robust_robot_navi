@@ -1,0 +1,3 @@
+## raw data
+Data comes from Supplementary Materials for "Mutual anticipation can contribute to self-organization in human crowds", Science Adcances, March 2021.
+Raw data for the main experiment with mobile phone distraction. This includes individual ID, frame number, x and y coordinates (cm), and subgroup ID in each row. The subgroup ID is 0 if the individual is a pedestrian walking toward the distracted pedestrians, 1 if the individual is a pedestrian walking in the same direction as the distracted pedestrians, and 2 if the individual is a distracted pedestrian. In the baseline condition, subgroup ID is 0 for all individuals.
