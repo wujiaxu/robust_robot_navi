@@ -87,7 +87,17 @@ docs/build/
 docs/source/_build/
 
 # benchmark
-crowd_navi_bench/
+**/*.mp4
+**/*.pth
+**/*.pt
+**/*.pdf
+**/*.png
+
+crowd_navi_bench/single_life_results
+crowd_navi_bench/results
+crowd_navi_bench/results_vis_aware
+crowd_navi_bench/ped_sim/
+crowd_navi_bench/data_generation
 
 # PyBuilder
 .pybuilder/
