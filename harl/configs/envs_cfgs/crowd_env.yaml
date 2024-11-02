@@ -1,0 +1,38 @@
+continuous_actions: True
+state_type: FP
+scenario: circle_cross
+task: crowd_navi
+
+map_size: 8
+with_static_obstacle: True
+human_num: 5
+robot_num: 1
+n_laser: 720
+laser_angle_resolute: 0.008726646 #[rad]
+laser_min_range: 0.0
+laser_max_range: 4.0
+
+robot_radius: 0.3
+robot_v_pref: 1.0
+robot_visible: True
+robot_rotation_constrain: 180
+
+human_radius: 0.3
+human_v_pref: 1.0
+human_visible: True
+human_rotation_constrain: 180
+use_discriminator: False
+human_preference_type: category
+human_preference_vector_dim: 3
+human_fov: 110
+
+penalty_collision: -20
+penalty_backward: 0.2
+reward_goal: 10
+goal_factor: 2
+goal_range: 0.3
+velo_factor: 0.2
+discomfort_dist: 1.0
+discomfort_penalty_factor: 0.2
+
+max_episode_length: 48
