@@ -10,7 +10,7 @@ from harl.common.buffers.on_policy_critic_buffer_ep import OnPolicyCriticBufferE
 from harl.common.buffers.on_policy_critic_buffer_fp import OnPolicyCriticBufferFP
 from harl.common.buffers.on_policy_critic_buffer_cmdp import OnPolicyCriticBufferCMDP
 from harl.algorithms.actors import ALGO_REGISTRY
-from harl.algorithms.critics.v_critic import DoubleVCritic, VCritic, DoubleDecVCritic
+from harl.algorithms.critics.v_critic import DoubleVCritic, VCritic
 from harl.algorithms.lagrange.lagrange import Lagrange
 from harl.utils.trans_tools import _t2n
 from harl.utils.envs_tools import (
@@ -188,12 +188,12 @@ class OnPolicyCMDPRunner:
                 )
                 self.actor_buffer.append(ac_bu)
 
-            self.critic = DoubleDecVCritic(
+            share_observation_space = self.envs.share_observation_space[0]
+            self.critic = DoubleVCritic(
                 {**algo_args["model"], **algo_args["algo"]},
-                self.envs.observation_space[0],
+                share_observation_space,
                 device=self.device,
             )
-            share_observation_space = self.envs.share_observation_space[0]
             self.base_critic = VCritic(
                 {**base_model_algo_args["model"], **base_model_algo_args["algo"]},
                 share_observation_space,
@@ -222,7 +222,7 @@ class OnPolicyCMDPRunner:
                 # In FP, the global states for all agents are different, and thus needs the dimension of the number of agents.
             self.critic_buffer = OnPolicyCriticBufferCMDP(
             {**algo_args["train"], **algo_args["model"], **algo_args["algo"]},
-            self.envs.observation_space[0],
+            share_observation_space,
             self.num_agents,
             )
             self.base_critic_buffer = OnPolicyCriticBufferFP(
@@ -411,7 +411,7 @@ class OnPolicyCMDPRunner:
                     :, agent_id
                 ].copy()
                 
-        self.critic_buffer.share_obs[0] = obs.copy()
+        self.critic_buffer.share_obs[0] = share_obs.copy()
         self.base_critic_buffer.share_obs[0] = share_obs.copy()
 
     @torch.no_grad()
@@ -584,7 +584,7 @@ class OnPolicyCMDPRunner:
             )
 
         self.critic_buffer.insert(
-            obs, rnn_states_critic, values, aux_values, rewards, aux_rewards, masks, bad_masks
+            share_obs, rnn_states_critic, values, aux_values, rewards, aux_rewards, masks, bad_masks
         )
         self.base_critic_buffer.insert(
             share_obs, rnn_states_base_critic, base_values, rewards, masks, bad_masks
@@ -639,7 +639,7 @@ class OnPolicyCMDPRunner:
         )
 
         # compute advantages
-        if self.value_normalizer is not None:
+        if self.value_normalizer is not None and self.aux_value_normalizer is not None:
             advantages = self.critic_buffer.returns[
                 :-1
             ] - self.value_normalizer.denormalize(self.critic_buffer.value_preds[:-1])
@@ -668,43 +668,43 @@ class OnPolicyCMDPRunner:
             std_advantages = np.nanstd(advantages_copy)
             advantages = (advantages - mean_advantages) / (std_advantages + 1e-5)
 
-        # if self.fixed_order:
-        agent_order = list(range(self.num_agents))
-        # else:
-        #     agent_order = list(torch.randperm(self.num_agents).numpy())
+        if self.fixed_order:
+            agent_order = list(range(self.num_agents))
+        else:
+            agent_order = list(torch.randperm(self.num_agents).numpy())
         for agent_id in agent_order:
             self.actor_buffer[agent_id].update_factor(
                 factor
             )  # current actor save factor
 
             # the following reshaping combines the first two dimensions (i.e. episode_length and n_rollout_threads) to form a batch
-            # available_actions = (
-            #     None
-            #     if self.actor_buffer[agent_id].available_actions is None
-            #     else self.actor_buffer[agent_id]
-            #     .available_actions[:-1]
-            #     .reshape(-1, *self.actor_buffer[agent_id].available_actions.shape[2:])
-            # )
+            available_actions = (
+                None
+                if self.actor_buffer[agent_id].available_actions is None
+                else self.actor_buffer[agent_id]
+                .available_actions[:-1]
+                .reshape(-1, *self.actor_buffer[agent_id].available_actions.shape[2:])
+            )
 
-            # # compute action log probs for the actor before update.
-            # old_actions_logprob, _, _ = self.actor[agent_id].evaluate_actions(
-            #     self.actor_buffer[agent_id]
-            #     .obs[:-1]
-            #     .reshape(-1, *self.actor_buffer[agent_id].obs.shape[2:]),
-            #     self.actor_buffer[agent_id]
-            #     .rnn_states[0:1]
-            #     .reshape(-1, *self.actor_buffer[agent_id].rnn_states.shape[2:]),
-            #     self.actor_buffer[agent_id].actions.reshape(
-            #         -1, *self.actor_buffer[agent_id].actions.shape[2:]
-            #     ),
-            #     self.actor_buffer[agent_id]
-            #     .masks[:-1]
-            #     .reshape(-1, *self.actor_buffer[agent_id].masks.shape[2:]),
-            #     available_actions,
-            #     self.actor_buffer[agent_id]
-            #     .active_masks[:-1]
-            #     .reshape(-1, *self.actor_buffer[agent_id].active_masks.shape[2:]),
-            # )
+            # compute action log probs for the actor before update.
+            old_actions_logprob, _, _ = self.actor[agent_id].evaluate_actions(
+                self.actor_buffer[agent_id]
+                .obs[:-1]
+                .reshape(-1, *self.actor_buffer[agent_id].obs.shape[2:]),
+                self.actor_buffer[agent_id]
+                .rnn_states[0:1]
+                .reshape(-1, *self.actor_buffer[agent_id].rnn_states.shape[2:]),
+                self.actor_buffer[agent_id].actions.reshape(
+                    -1, *self.actor_buffer[agent_id].actions.shape[2:]
+                ),
+                self.actor_buffer[agent_id]
+                .masks[:-1]
+                .reshape(-1, *self.actor_buffer[agent_id].masks.shape[2:]),
+                available_actions,
+                self.actor_buffer[agent_id]
+                .active_masks[:-1]
+                .reshape(-1, *self.actor_buffer[agent_id].active_masks.shape[2:]),
+            )
 
             # update actor
             if self.state_type == "EP":
@@ -716,36 +716,36 @@ class OnPolicyCMDPRunner:
                     self.actor_buffer[agent_id], advantages[:, :, agent_id].copy(), "FP"
                 )
 
-            # # compute action log probs for updated agent
-            # new_actions_logprob, _, _ = self.actor[agent_id].evaluate_actions(
-            #     self.actor_buffer[agent_id]
-            #     .obs[:-1]
-            #     .reshape(-1, *self.actor_buffer[agent_id].obs.shape[2:]),
-            #     self.actor_buffer[agent_id]
-            #     .rnn_states[0:1]
-            #     .reshape(-1, *self.actor_buffer[agent_id].rnn_states.shape[2:]),
-            #     self.actor_buffer[agent_id].actions.reshape(
-            #         -1, *self.actor_buffer[agent_id].actions.shape[2:]
-            #     ),
-            #     self.actor_buffer[agent_id]
-            #     .masks[:-1]
-            #     .reshape(-1, *self.actor_buffer[agent_id].masks.shape[2:]),
-            #     available_actions,
-            #     self.actor_buffer[agent_id]
-            #     .active_masks[:-1]
-            #     .reshape(-1, *self.actor_buffer[agent_id].active_masks.shape[2:]),
-            # )
+            # compute action log probs for updated agent
+            new_actions_logprob, _, _ = self.actor[agent_id].evaluate_actions(
+                self.actor_buffer[agent_id]
+                .obs[:-1]
+                .reshape(-1, *self.actor_buffer[agent_id].obs.shape[2:]),
+                self.actor_buffer[agent_id]
+                .rnn_states[0:1]
+                .reshape(-1, *self.actor_buffer[agent_id].rnn_states.shape[2:]),
+                self.actor_buffer[agent_id].actions.reshape(
+                    -1, *self.actor_buffer[agent_id].actions.shape[2:]
+                ),
+                self.actor_buffer[agent_id]
+                .masks[:-1]
+                .reshape(-1, *self.actor_buffer[agent_id].masks.shape[2:]),
+                available_actions,
+                self.actor_buffer[agent_id]
+                .active_masks[:-1]
+                .reshape(-1, *self.actor_buffer[agent_id].active_masks.shape[2:]),
+            )
 
-            # # update factor for next agent
-            # factor = factor * _t2n(
-            #     getattr(torch, self.action_aggregation)(
-            #         torch.exp(new_actions_logprob - old_actions_logprob), dim=-1
-            #     ).reshape(
-            #         self.algo_args["train"]["episode_length"],
-            #         self.algo_args["train"]["n_rollout_threads"],
-            #         1,
-            #     )
-            # )
+            # update factor for next agent
+            factor = factor * _t2n(
+                getattr(torch, self.action_aggregation)(
+                    torch.exp(new_actions_logprob - old_actions_logprob), dim=-1
+                ).reshape(
+                    self.algo_args["train"]["episode_length"],
+                    self.algo_args["train"]["n_rollout_threads"],
+                    1,
+                )
+            )
             actor_train_infos[agent_id]= actor_train_info
 
         # update critic

@@ -22,6 +22,7 @@ LOGGER_REGISTRY = {
     "smacv2": SMACv2Logger,
     "lag": LAGLogger,
     "crowd_env":CrowdEnvLogger,
+    "crowd_env_ccp":CrowdEnvLogger,
     "crowd_env_vis":CrowdEnvLogger,
     "crowd_env_vis_ablation_1":CrowdEnvLogger,
     "crowd_env_vis_ablation_2":CrowdEnvLogger,

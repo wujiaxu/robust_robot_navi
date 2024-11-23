@@ -21,6 +21,7 @@ def main():
         default="crowd_env",
         choices=[
             "crowd_env",
+            "crowd_env_ccp",
             "crowd_env_vis"
         ],
         help="Environment name. Choose from: crowd_sim",

@@ -23,9 +23,11 @@ class Render:
         self.crowd_pref_text = self.render_axis.text(-size/2.+1,
                                                      size/2.-0.3, 
                                                      'crowd_pref:{}'.format(-1), fontsize=14, color='black')
+        self.crowd_pref_text.set_visible(False)
         self.robot_log_prob_text = self.render_axis.text(-size/2.+1,
                                                      size/2.-0.6, 
                                                      'robot input prob:{}'.format(-1), fontsize=14, color='black')
+        self.robot_log_prob_text.set_visible(False)
         plt.xlim(-size/2.-1,size/2+1)
         plt.ylim(-size/2.-1,size/2+1)
 
@@ -154,13 +156,25 @@ class Render:
                 time = round(time,2)
             if preference is not None:
                 pref_text = "crowd_pref:"
+                pref_type = preference["meta"]
                 for key in preference:
-                    pref_text += "{},".format(np.argmax(preference[key]))
+                    if key=="meta":continue
+                    if pref_type == "category":
+                        pref_text += "{},".format(np.argmax(preference[key]))
+                    elif pref_type == "ccp":
+                        pref_text += "{},".format(
+                            str(round(preference[key][0],1))+"-"+str(round(preference[key][1],1))
+                            )
                 self.crowd_pref_text.set_text('time:{:.2f},'.format(time)+pref_text)
+                self.crowd_pref_text.set_visible(True)
+            else:
+                self.crowd_pref_text.set_visible(False)
             if log_probs is not None:
                 if log_probs[0] is not None:
                     self.robot_log_prob_text.set_text('robot input prob:{:.2f},'.format(log_probs[0]))
-
+                    self.robot_log_prob_text.set_visible(True)
+                else:
+                    self.robot_log_prob_text.set_visible(False)
             # self.text.set_text(velo_text)
             self.render_axis.figure.canvas.draw()
             data = np.frombuffer(self.render_axis.figure.canvas.tostring_rgb(), dtype=np.uint8)

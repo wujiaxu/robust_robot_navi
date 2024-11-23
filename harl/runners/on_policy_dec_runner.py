@@ -8,10 +8,10 @@ from harl.common.valuenorm import ValueNorm
 from harl.common.buffers.on_policy_actor_buffer import OnPolicyActorBuffer
 from harl.common.buffers.on_policy_critic_buffer_ep import OnPolicyCriticBufferEP
 from harl.common.buffers.on_policy_critic_buffer_fp import OnPolicyCriticBufferFP
-from harl.common.buffers.on_policy_critic_buffer_cmdp import OnPolicyCriticBufferCMDP
+# from harl.common.buffers.on_policy_critic_buffer_cmdp import OnPolicyCriticBufferCMDP
 from harl.algorithms.actors import ALGO_REGISTRY
-from harl.algorithms.critics.v_critic import DoubleVCritic, VCritic, DoubleDecVCritic
-from harl.algorithms.lagrange.lagrange import Lagrange
+from harl.algorithms.critics.v_critic import VCritic, DecVCritic
+# from harl.algorithms.lagrange.lagrange import Lagrange
 from harl.utils.trans_tools import _t2n
 from harl.utils.envs_tools import (
     make_eval_env,
@@ -27,11 +27,12 @@ from harl.envs import LOGGER_REGISTRY
 from harl.common.video import VideoRecorder
 
 
-class OnPolicyCMDPRunner:
+class OnPolicyDecRunner:
     """Base runner for on-policy algorithms."""
 
-    def __init__(self, args, algo_args, env_args,base_model_algo_args):
-        """Initialize the OnPolicyBaseRunner class.
+    def __init__(self, args, algo_args, env_args):
+        print("Initialize OnPolicyDecRunner")
+        """Initialize the OnPolicyDecRunner class.
         Args:
             args: command-line arguments parsed by argparse. Three keys: algo, env, exp_name.
             algo_args: arguments related to algo, loaded from config file and updated with unparsed command-line arguments.
@@ -43,11 +44,7 @@ class OnPolicyCMDPRunner:
         self.human_num = algo_args["model"]["human_num"] = env_args["human_num"]
         self.robot_num = algo_args["model"]["robot_num"] = env_args["robot_num"]
         algo_args["algo"]["human_preference_vector_dim"] = env_args["human_preference_vector_dim"]
-        base_model_algo_args["algo"]["human_preference_vector_dim"] = env_args["human_preference_vector_dim"]
-        base_model_algo_args["model"]["human_num"] = env_args["human_num"]
-        base_model_algo_args["model"]["robot_num"] = env_args["robot_num"]
 
-        self.optimality = args["optimality"]
         self.hidden_sizes = algo_args["model"]["hidden_sizes"]
         self.rnn_hidden_size = self.hidden_sizes[-1]
         self.recurrent_n = algo_args["model"]["recurrent_n"]
@@ -132,7 +129,7 @@ class OnPolicyCMDPRunner:
                     self.envs.action_space[agent_id] == self.envs.action_space[0]
                 ), "Agents have heterogeneous action spaces, parameter sharing is not valid."
                 self.actor.append(self.actor[0])
-        elif self.use_discriminator:
+        elif self.use_discriminator: #use human preference
             self.actor = []
             # not discrim for robot agent 
             algo_args["algo"]["use_discriminator"] = False
@@ -155,7 +152,7 @@ class OnPolicyCMDPRunner:
                 )
             self.actor.append(human_agent) 
             #use discrminator == share param betwee human agent
-            print(agent_id,"use discriminator:",human_agent.use_discriminator)
+            # print(agent_id,"use discriminator:",human_agent.use_discriminator)
             # only share human agent param
             for agent_id in range(self.robot_num+1,self.num_agents):
                 assert (
@@ -166,7 +163,7 @@ class OnPolicyCMDPRunner:
                     self.envs.action_space[agent_id] == self.envs.action_space[self.robot_num]
                 ), "Agents have heterogeneous action spaces, parameter sharing is not valid."
                 self.actor.append(self.actor[self.robot_num])
-                print(agent_id,"use discriminator:",human_agent.use_discriminator)
+                # print(agent_id,"use discriminator:",human_agent.use_discriminator)
         else:
             self.actor = []
             for agent_id in range(self.num_agents):
@@ -188,80 +185,29 @@ class OnPolicyCMDPRunner:
                 )
                 self.actor_buffer.append(ac_bu)
 
-            self.critic = DoubleDecVCritic(
+            self.critic = DecVCritic(
                 {**algo_args["model"], **algo_args["algo"]},
                 self.envs.observation_space[0],
                 device=self.device,
             )
-            share_observation_space = self.envs.share_observation_space[0]
-            self.base_critic = VCritic(
-                {**base_model_algo_args["model"], **base_model_algo_args["algo"]},
-                share_observation_space,
-                device=self.device,
-            )
-            
-            base_critic_state_dict = torch.load(
-            str(base_model_algo_args["train"]["model_dir"])
-            + "/models"
-            + "/critic_agent"
-            + ".pt"
-            )
-            self.base_critic.critic.load_state_dict(base_critic_state_dict)
-            self.base_critic.prep_rollout()
-            self.base_value_normalizer = ValueNorm(1, device=self.device)
-            
-            base_value_normalizer_state_dict = torch.load(
-                str(base_model_algo_args["train"]["model_dir"])
-                + "/models"
-                + "/value_normalizer"
-                + ".pt"
-            )
-            self.base_value_normalizer.load_state_dict(base_value_normalizer_state_dict)
-
                 # FP stands for Feature Pruned, as phrased by MAPPO paper.
                 # In FP, the global states for all agents are different, and thus needs the dimension of the number of agents.
-            self.critic_buffer = OnPolicyCriticBufferCMDP(
+            self.critic_buffer = OnPolicyCriticBufferFP(
             {**algo_args["train"], **algo_args["model"], **algo_args["algo"]},
             self.envs.observation_space[0],
             self.num_agents,
             )
-            self.base_critic_buffer = OnPolicyCriticBufferFP(
-            {**base_model_algo_args["train"], 
-             **base_model_algo_args["model"], 
-             **base_model_algo_args["algo"]},
-            share_observation_space,
-            self.num_agents,
-            )
-
 
             if self.algo_args["train"]["use_valuenorm"] is True:
                 self.value_normalizer = ValueNorm(1, device=self.device)
-                self.aux_value_normalizer = ValueNorm(1, device=self.device)
             else:
                 self.value_normalizer = None
-                self.aux_value_normalizer = None
 
             self.logger = LOGGER_REGISTRY[args["env"]](
                 args, algo_args, env_args, self.num_agents, self.writter, self.run_dir
             )
         if self.algo_args["train"]["model_dir"] is not None:  # restore model
             self.restore()
-
-        # init lagrange
-        lagrangian_k_p: float = args["lagrangian_k_p"]#1
-        lagrangian_k_i: float = args["lagrangian_k_i"]#0.0003
-        lagrangian_k_d: float = args["lagrangian_k_d"]#0.0
-        lagrange_multiplier_upper_bound: float = args["lagrangian_upper_bound"]#1000
-        lagrangian_multiplier_lower_bound: float = args["lagrangian_lower_bound"]#1
-        lagrange_update_interval: int = 1
-        update_every_steps: int = 1
-        self.balancing_factor: float = 1./self.algo_args["algo"]["intrinsic_reward_scale"]
-        self.lagrange = Lagrange(self.balancing_factor,
-                                 lagrange_multiplier_upper_bound,
-                                 lagrangian_multiplier_lower_bound,
-                                 lagrangian_k_p,lagrangian_k_i,lagrangian_k_d)
-        self.update_lagrange_every_steps = update_every_steps * lagrange_update_interval
-
 
         # init video recorder for debug
         self.video_recorder = VideoRecorder(self.log_dir)
@@ -279,7 +225,7 @@ class OnPolicyCMDPRunner:
             // self.algo_args["train"]["episode_length"]
             // self.algo_args["train"]["n_rollout_threads"]
         )
-
+        aux_rewards = np.zeros((self.algo_args["train"]["n_rollout_threads"],self.num_agents))
         self.logger.init(episodes)  # logger callback at the beginning of training
 
         for episode in range(1, episodes + 1):
@@ -301,15 +247,11 @@ class OnPolicyCMDPRunner:
             for step in range(self.algo_args["train"]["episode_length"]):
                 # Sample actions from actors and values from critics
                 (
-                    aux_rewards,
                     values,
-                    aux_values,
-                    base_values,
                     actions,
                     action_log_probs,
                     rnn_states,
                     rnn_states_critic,
-                    rnn_states_base_critic
                 ) = self.collect(step)
                 
                 # actions: (n_threads, n_agents, action_dim)
@@ -321,14 +263,7 @@ class OnPolicyCMDPRunner:
                     infos,
                     available_actions,
                 ) = self.envs.step(actions)
-                # if self.use_discriminator: #TODO using lagrange
-                #     rewards = rewards + aux_rewards*self.algo_args["algo"]["intrinsic_reward_scale"]
-                # obs: (n_threads, n_agents, obs_dim)
-                # share_obs: (n_threads, n_agents, share_obs_dim)
-                # rewards: (n_threads, n_agents, 1)
-                # dones: (n_threads, n_agents)
-                # infos: (n_threads)
-                # available_actions: (n_threads, ) of None or (n_threads, n_agents, action_number)
+                
                 data = (
                     obs,
                     share_obs,
@@ -341,12 +276,8 @@ class OnPolicyCMDPRunner:
                     action_log_probs,
                     rnn_states,
                     rnn_states_critic,
-                    aux_rewards,
-                    aux_values,
-                    base_values,
-                    rnn_states_base_critic
                 )
-
+                
                 self.logger.per_step((
                     obs,
                     share_obs,
@@ -359,16 +290,10 @@ class OnPolicyCMDPRunner:
                     action_log_probs,
                     rnn_states,
                     rnn_states_critic,
-                    aux_rewards,
+                    aux_rewards
                 ))  # logger callback at each step
 
                 self.insert(data)  # insert data into buffer
-
-            # Update lagrange
-            # if episode % self.update_lagrange_every_steps ==0:#TODO needed?
-            cost_limit, cost = self.cal_lagrange_cost_and_limit()
-            self.lagrange.update_lagrange_multiplier(cost,cost_limit)
-            self.balancing_factor = self.lagrange.lagrangian_multiplier
 
             # compute return and update network
             self.compute()
@@ -384,11 +309,6 @@ class OnPolicyCMDPRunner:
                     self.actor_buffer,
                     self.critic_buffer,
                 )
-                self.logger.lagrange_per_step(cost_limit,
-                                              cost,
-                                              self.balancing_factor,
-                                              self.lagrange.pid_i,
-                                              )
 
             # eval
             if episode % self.algo_args["train"]["eval_interval"] == 0:
@@ -412,7 +332,6 @@ class OnPolicyCMDPRunner:
                 ].copy()
                 
         self.critic_buffer.share_obs[0] = obs.copy()
-        self.base_critic_buffer.share_obs[0] = share_obs.copy()
 
     @torch.no_grad()
     def collect(self, step):
@@ -426,7 +345,6 @@ class OnPolicyCMDPRunner:
         action_collector = []
         action_log_prob_collector = []
         rnn_state_collector = []
-        aux_rewards = np.zeros((self.algo_args["train"]["n_rollout_threads"],self.num_agents))
         for agent_id in range(self.num_agents):
             action, action_log_prob, rnn_state = self.actor[agent_id].get_actions(
                 self.actor_buffer[agent_id].obs[step],
@@ -440,23 +358,12 @@ class OnPolicyCMDPRunner:
             action_log_prob_collector.append(_t2n(action_log_prob))
             rnn_state_collector.append(_t2n(rnn_state))
 
-            #TODO implement
-            if agent_id < self.robot_num or not self.use_discriminator:
-                pass
-            else:
-                loss = self.actor[agent_id].get_aux_reward(
-                                        self.actor_buffer[agent_id].obs[step],
-                                        rnn_state,
-                                        action,
-                                        self.actor_buffer[agent_id].active_masks[step])
-                aux_rewards[:,agent_id] = -np.log(1./self.env_args["human_preference_vector_dim"])-_t2n(loss)
-        
         # (n_agents, n_threads, dim) -> (n_threads, n_agents, dim)
         actions = np.array(action_collector).transpose(1, 0, 2)
         action_log_probs = np.array(action_log_prob_collector).transpose(1, 0, 2)
         rnn_states = np.array(rnn_state_collector).transpose(1, 0, 2, 3)
  
-        value, aux_value, rnn_state_critic = self.critic.get_values(
+        value, rnn_state_critic = self.critic.get_values(
             np.concatenate(self.critic_buffer.share_obs[step]),
             np.concatenate(self.critic_buffer.rnn_states_critic[step]),
             np.concatenate(self.critic_buffer.masks[step]),
@@ -465,31 +372,13 @@ class OnPolicyCMDPRunner:
         values = np.array(
             np.split(_t2n(value), self.algo_args["train"]["n_rollout_threads"])
         )
-        aux_values = np.array(
-            np.split(_t2n(aux_value), self.algo_args["train"]["n_rollout_threads"])
-        )
         rnn_states_critic = np.array(
             np.split(
                 _t2n(rnn_state_critic), self.algo_args["train"]["n_rollout_threads"]
             )
         )
 
-        base_value, rnn_state_base_critic = self.base_critic.get_values(
-            np.concatenate(self.base_critic_buffer.share_obs[step]),
-            np.concatenate(self.base_critic_buffer.rnn_states_critic[step]),
-            np.concatenate(self.base_critic_buffer.masks[step]),
-        )  # concatenate (n_threads, n_agents, dim) into (n_threads * n_agents, dim)
-        # split (n_threads * n_agents, dim) into (n_threads, n_agents, dim)
-        base_values = np.array(
-            np.split(_t2n(base_value), self.algo_args["train"]["n_rollout_threads"])
-        )
-        rnn_state_base_critic = np.array(
-            np.split(
-                _t2n(rnn_state_base_critic), self.algo_args["train"]["n_rollout_threads"]
-            )
-        )
-
-        return aux_rewards[:,:,np.newaxis],values, aux_values, base_values, actions, action_log_probs, rnn_states, rnn_states_critic,rnn_state_base_critic
+        return values, actions, action_log_probs, rnn_states, rnn_states_critic
 
     def insert(self, data):
         """Insert data into buffer."""
@@ -505,10 +394,6 @@ class OnPolicyCMDPRunner:
             action_log_probs,  # (n_threads, n_agents, action_dim)
             rnn_states,  # (n_threads, n_agents, dim)
             rnn_states_critic,  # EP: (n_threads, dim), FP: (n_threads, n_agents, dim)
-            aux_rewards,
-            aux_values,
-            base_values,
-            rnn_states_base_critic
         ) = data
 
         dones_env = np.all(dones, axis=1)  # if all agents are done, then env is done
@@ -584,10 +469,7 @@ class OnPolicyCMDPRunner:
             )
 
         self.critic_buffer.insert(
-            obs, rnn_states_critic, values, aux_values, rewards, aux_rewards, masks, bad_masks
-        )
-        self.base_critic_buffer.insert(
-            share_obs, rnn_states_base_critic, base_values, rewards, masks, bad_masks
+            obs, rnn_states_critic, values, rewards, masks, bad_masks
         )
 
     @torch.no_grad()
@@ -597,7 +479,7 @@ class OnPolicyCMDPRunner:
         and then let buffer compute returns, which will be used during training.
         """
 
-        next_value, next_aux_value, _ = self.critic.get_values(
+        next_value, _ = self.critic.get_values(
                 np.concatenate(self.critic_buffer.share_obs[-1]),
                 np.concatenate(self.critic_buffer.rnn_states_critic[-1]),
                 np.concatenate(self.critic_buffer.masks[-1]),
@@ -605,24 +487,7 @@ class OnPolicyCMDPRunner:
         next_value = np.array(
                 np.split(_t2n(next_value), self.algo_args["train"]["n_rollout_threads"])
             )
-        next_aux_value = np.array(
-                np.split(_t2n(next_aux_value), self.algo_args["train"]["n_rollout_threads"])
-            )
         self.critic_buffer.compute_returns(next_value, self.value_normalizer)
-        self.critic_buffer.compute_aux_returns(next_aux_value,self.aux_value_normalizer)
-
-    def cal_lagrange_cost_and_limit(self):
-        assert self.value_normalizer is not None
-        assert self.base_value_normalizer is not None
-        base_v_0 = np.sum(self.base_value_normalizer.denormalize(self.base_critic_buffer.value_preds) \
-                            * (1-self.base_critic_buffer.masks)) \
-                            / np.sum(1-self.base_critic_buffer.masks)
-        v_0 = np.sum(self.value_normalizer.denormalize(self.critic_buffer.value_preds) \
-                            * (1-self.critic_buffer.masks)) \
-                            / np.sum(1-self.critic_buffer.masks)
-        cost_limit = -base_v_0 * self.optimality
-        cost = -v_0
-        return cost_limit, cost
 
     def train(self):
         """Train the model."""
@@ -643,19 +508,10 @@ class OnPolicyCMDPRunner:
             advantages = self.critic_buffer.returns[
                 :-1
             ] - self.value_normalizer.denormalize(self.critic_buffer.value_preds[:-1])
-            aux_advantages = self.critic_buffer.aux_returns[
-                :-1
-            ] - self.aux_value_normalizer.denormalize(self.critic_buffer.aux_value_preds[:-1])
-            advantages = (aux_advantages + advantages*self.balancing_factor)/(1+self.balancing_factor)
         else:
             advantages = (
                 self.critic_buffer.returns[:-1] - self.critic_buffer.value_preds[:-1]
             )
-            aux_advantages = (
-                self.critic_buffer.aux_returns[:-1] - self.critic_buffer.aux_value_preds[:-1]
-            )
-            advantages = (aux_advantages + advantages*self.balancing_factor)/(1+self.balancing_factor) 
-
         # normalize advantages for FP
         if self.state_type == "FP":
             active_masks_collector = [
@@ -677,35 +533,6 @@ class OnPolicyCMDPRunner:
                 factor
             )  # current actor save factor
 
-            # the following reshaping combines the first two dimensions (i.e. episode_length and n_rollout_threads) to form a batch
-            # available_actions = (
-            #     None
-            #     if self.actor_buffer[agent_id].available_actions is None
-            #     else self.actor_buffer[agent_id]
-            #     .available_actions[:-1]
-            #     .reshape(-1, *self.actor_buffer[agent_id].available_actions.shape[2:])
-            # )
-
-            # # compute action log probs for the actor before update.
-            # old_actions_logprob, _, _ = self.actor[agent_id].evaluate_actions(
-            #     self.actor_buffer[agent_id]
-            #     .obs[:-1]
-            #     .reshape(-1, *self.actor_buffer[agent_id].obs.shape[2:]),
-            #     self.actor_buffer[agent_id]
-            #     .rnn_states[0:1]
-            #     .reshape(-1, *self.actor_buffer[agent_id].rnn_states.shape[2:]),
-            #     self.actor_buffer[agent_id].actions.reshape(
-            #         -1, *self.actor_buffer[agent_id].actions.shape[2:]
-            #     ),
-            #     self.actor_buffer[agent_id]
-            #     .masks[:-1]
-            #     .reshape(-1, *self.actor_buffer[agent_id].masks.shape[2:]),
-            #     available_actions,
-            #     self.actor_buffer[agent_id]
-            #     .active_masks[:-1]
-            #     .reshape(-1, *self.actor_buffer[agent_id].active_masks.shape[2:]),
-            # )
-
             # update actor
             if self.state_type == "EP":
                 actor_train_info = self.actor[agent_id].train(
@@ -716,40 +543,10 @@ class OnPolicyCMDPRunner:
                     self.actor_buffer[agent_id], advantages[:, :, agent_id].copy(), "FP"
                 )
 
-            # # compute action log probs for updated agent
-            # new_actions_logprob, _, _ = self.actor[agent_id].evaluate_actions(
-            #     self.actor_buffer[agent_id]
-            #     .obs[:-1]
-            #     .reshape(-1, *self.actor_buffer[agent_id].obs.shape[2:]),
-            #     self.actor_buffer[agent_id]
-            #     .rnn_states[0:1]
-            #     .reshape(-1, *self.actor_buffer[agent_id].rnn_states.shape[2:]),
-            #     self.actor_buffer[agent_id].actions.reshape(
-            #         -1, *self.actor_buffer[agent_id].actions.shape[2:]
-            #     ),
-            #     self.actor_buffer[agent_id]
-            #     .masks[:-1]
-            #     .reshape(-1, *self.actor_buffer[agent_id].masks.shape[2:]),
-            #     available_actions,
-            #     self.actor_buffer[agent_id]
-            #     .active_masks[:-1]
-            #     .reshape(-1, *self.actor_buffer[agent_id].active_masks.shape[2:]),
-            # )
-
-            # # update factor for next agent
-            # factor = factor * _t2n(
-            #     getattr(torch, self.action_aggregation)(
-            #         torch.exp(new_actions_logprob - old_actions_logprob), dim=-1
-            #     ).reshape(
-            #         self.algo_args["train"]["episode_length"],
-            #         self.algo_args["train"]["n_rollout_threads"],
-            #         1,
-            #     )
-            # )
             actor_train_infos[agent_id]= actor_train_info
 
         # update critic
-        critic_train_info = self.critic.train(self.critic_buffer, self.value_normalizer,self.aux_value_normalizer)
+        critic_train_info = self.critic.train(self.critic_buffer, self.value_normalizer)
 
         return [actor_train_infos[agent_id] for agent_id in range(self.num_agents)], critic_train_info
 
@@ -1024,11 +821,6 @@ class OnPolicyCMDPRunner:
                 self.value_normalizer.state_dict(),
                 str(self.save_dir) + "/value_normalizer" + ".pt",
             )
-        if self.aux_value_normalizer is not None:
-            torch.save(
-                self.aux_value_normalizer.state_dict(),
-                str(self.save_dir) + "/aux_value_normalizer" + ".pt",
-            )
 
     def restore(self):
         """Restore model parameters."""
@@ -1052,13 +844,6 @@ class OnPolicyCMDPRunner:
                     + ".pt"
                 )
                 self.value_normalizer.load_state_dict(value_normalizer_state_dict)
-            if self.aux_value_normalizer is not None:
-                value_normalizer_state_dict = torch.load(
-                    str(self.algo_args["train"]["model_dir"])
-                    + "/aux_value_normalizer"
-                    + ".pt"
-                )
-                self.aux_value_normalizer.load_state_dict(value_normalizer_state_dict)
 
     def close(self):
         """Close environment, writter, and logger."""

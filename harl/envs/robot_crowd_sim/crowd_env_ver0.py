@@ -15,7 +15,7 @@ from harl.envs.robot_crowd_sim.utils.info import *
 EPISODE_TIME_STATE_DIM = 2
 
 class RobotCrowdSim:
-    version="1.0.0"
+    version="0.0.0"
     def __init__(self,
                  args,
                  phase:str,
@@ -48,8 +48,6 @@ class RobotCrowdSim:
         # setup agents (robot and crowd)
         self._human_num = self.args["human_num"]
         self._robot_num = self.args["robot_num"]
-        self._random_human_num:bool = self.args.get("random_human_num",False)
-        self._minimum_human_num:bool = self.args.get("minimum_human_num",2)
         self.n_agents = self._human_num+self._robot_num #TODO change self.robot to self.robots: List[Agent] to adapt self play
         
         self.agents:tp.List[Agent] = []
@@ -74,7 +72,7 @@ class RobotCrowdSim:
         self._use_human_preference = self.args["use_discriminator"]
         self._human_preference_vector_dim = self.args["human_preference_vector_dim"]
         self._human_preference_type = self.args["human_preference_type"]
-        self._crowd_preference = {"meta":self._human_preference_type}
+        self._crowd_preference = {}
 
         if self._scenario == "circle_cross":
             self._spawner = CircleSpawner(self.args["map_size"],self.agents) #TODO add corridor spawner
@@ -181,16 +179,7 @@ class RobotCrowdSim:
         else:
             self.random_seed = base_seed[self.phase] + self.case_counter[self.phase] + self.thisSeed
         np.random.seed(self.random_seed)
-        if self._random_human_num:
-            human_num_this_episode = np.random.randint(self._minimum_human_num,self._human_num+1)
-            active_human = np.zeros(self._human_num, dtype=bool)
-            active_human[:human_num_this_episode] = True
-            # Shuffle the vector to randomly distribute the `True` values
-            np.random.shuffle(active_human)
-        else:
-            # human_num_this_episode = self._human_num
-            active_human = np.ones(self._human_num, dtype=bool)
-        active_agent = np.hstack([np.ones(self._robot_num,bool),active_human])
+        
         # assert self._robot_num == 1 #TODO multiple robots
         if self.phase == "test" and seed is not None:
             if seed == -1:
@@ -199,20 +188,12 @@ class RobotCrowdSim:
                 self.agents[2].set(-3, -0.1, 3, -0, 0,0, -np.pi)
             else:
                 for agent in self.agents:
-                    if active_agent[agent.id]:
-                        self._spawner.spawnAgent(agent)
-                        agent.task_done = False
-                    else:
-                        agent.set(999, 999, 999, 999, 0,0, 0)
-                        agent.task_done = True
-        else:
-            for agent in self.agents:
-                if active_agent[agent.id]:
                     self._spawner.spawnAgent(agent)
                     agent.task_done = False
-                else:
-                    agent.set(999, 999, 999, 999, 0,0, 0)
-                    agent.task_done = True
+        else:
+            for agent in self.agents:
+                self._spawner.spawnAgent(agent)
+                agent.task_done = False
 
         # randomize agent attributes
         if self.phase == "test" and random_attribute_seed is not None:
@@ -313,24 +294,21 @@ class RobotCrowdSim:
         )
     
     def render(self, mode="rgb_array"):
-        if self._use_human_preference:
-            return self._render.rend(mode,self.global_time,self._crowd_preference,self.agent_log_probs)
-        else:
-            return self._render.rend(mode,self.global_time,log_probs=self.agent_log_probs)
+        return self._render.rend(mode,self.global_time,self._crowd_preference,self.agent_log_probs)
     
     def close(self):
 
         return
     
     def _initHumanPreferenceVector(self,preference=None):
-        task = np.zeros(self._human_preference_vector_dim)
-        if self._human_preference_type == "category" and self._use_human_preference:
+        if self._human_preference_type == "category":
             if preference is None:
                 random_index = np.random.randint(0, self._human_preference_vector_dim)
             else:
                 assert preference<self._human_preference_vector_dim and isinstance(preference,int)
                 random_index = preference
             # Create a one-hot vector
+            task = np.zeros(self._human_preference_vector_dim)
             task[random_index] = 1
         else:
             raise NotImplementedError
