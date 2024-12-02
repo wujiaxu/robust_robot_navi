@@ -1,3 +1,4 @@
+from ast import Tuple #TODO delete
 import gym.spaces
 import numpy as np
 import typing as tp
@@ -7,7 +8,7 @@ from harl.envs.robot_crowd_sim.utils.agent import Agent
 from harl.envs.robot_crowd_sim.utils.map import Map
 from harl.envs.robot_crowd_sim.utils.sensor import LiDAR
 from harl.envs.robot_crowd_sim.utils.render import Render
-from harl.envs.robot_crowd_sim.utils.spawner import CircleSpawner,RectangleSpawner,Room361Spawner
+from harl.envs.robot_crowd_sim.utils.spawner import CircleSpawner,RectangleSpawner,Room361Spawner,UCYstudentsSpawner,Room256Spawner
 from harl.envs.robot_crowd_sim.utils.action import ActionVW,ActionXY
 from harl.envs.robot_crowd_sim.utils.info import *
 
@@ -42,6 +43,10 @@ class RobotCrowdSim:
             self._map = Map(self._map_size/2,self._map_size*1.5)
         elif self._scenario == "room_361":
             self._map = Map(3.7,5.6)
+        elif self._scenario == "room_256":
+            self._map = Map(3.5,3.5)
+        elif self._scenario == "ucy_students":
+            self._map = Map(10,10)
         else:
             raise NotImplementedError
         self._time_step = 0.25
@@ -82,6 +87,10 @@ class RobotCrowdSim:
             self._spawner = RectangleSpawner(self._map._map_width,self._map._map_hight,self.agents)
         elif self._scenario == "room_361":
             self._spawner = Room361Spawner(self._map._map_width,self._map._map_hight,self.agents)
+        elif self._scenario == "room_256":
+            self._spawner = Room256Spawner(self._map._map_width,self._map._map_hight,self.agents)
+        elif self._scenario == "ucy_students":
+            self._spawner = UCYstudentsSpawner(self._map._map_width,self._map._map_hight,self.agents)
         else:
             raise NotImplementedError
 
@@ -167,7 +176,9 @@ class RobotCrowdSim:
     
     def reset(self, seed: tp.Optional[int]=None, 
                     preference: tp.Optional[tp.List[int]]=None,
-                    random_attribute_seed:tp.Optional[int]=None):
+                    random_attribute_seed:tp.Optional[int]=None,
+                    agent_init: tp.Optional[tp.List[Tuple]]=None,
+                    random_attribute: tp.Optional[tp.List[Tuple]]=None,):
         available_actions = None
         self._num_episode_steps = 0
         train_seed_begin = [0, 10, 100, 1000, 10000]
@@ -181,33 +192,51 @@ class RobotCrowdSim:
         else:
             self.random_seed = base_seed[self.phase] + self.case_counter[self.phase] + self.thisSeed
         np.random.seed(self.random_seed)
-        if self._random_human_num:
-            human_num_this_episode = np.random.randint(self._minimum_human_num,self._human_num+1)
-            active_human = np.zeros(self._human_num, dtype=bool)
-            active_human[:human_num_this_episode] = True
-            # Shuffle the vector to randomly distribute the `True` values
-            np.random.shuffle(active_human)
+        if agent_init is None:
+            if self._random_human_num:
+                human_num_this_episode = np.random.randint(self._minimum_human_num,self._human_num+1)
+                active_human = np.zeros(self._human_num, dtype=bool)
+                active_human[:human_num_this_episode] = True
+                # Shuffle the vector to randomly distribute the `True` values
+                np.random.shuffle(active_human)
+            else:
+                # human_num_this_episode = self._human_num
+                active_human = np.ones(self._human_num, dtype=bool)
+            self.active_agent = np.hstack([np.ones(self._robot_num,bool),active_human])
         else:
-            # human_num_this_episode = self._human_num
-            active_human = np.ones(self._human_num, dtype=bool)
-        active_agent = np.hstack([np.ones(self._robot_num,bool),active_human])
+            active_human = np.zeros(self._human_num+self._robot_num, dtype=bool)
+            active_human[:len(agent_init)] = True
+            self.active_agent = active_human
+        
         # assert self._robot_num == 1 #TODO multiple robots
-        if self.phase == "test" and seed is not None:
+        if self.phase == "test" and seed is not None and agent_init is None:
             if seed == -1:
                 self.agents[0].set(0, -(self._map_size/2-1), 0, (self._map_size/2-1), 0, 0, np.pi/2)
                 self.agents[1].set(3, 0.1, -3, -0, 0,0, np.pi)
                 self.agents[2].set(-3, -0.1, 3, -0, 0,0, -np.pi)
             else:
                 for agent in self.agents:
-                    if active_agent[agent.id]:
+                    if self.active_agent[agent.id]:
                         self._spawner.spawnAgent(agent)
                         agent.task_done = False
                     else:
                         agent.set(999, 999, 999, 999, 0,0, 0)
                         agent.task_done = True
+        elif self.phase == "test" and seed is not None and agent_init is not None:
+            # for i, (px,py,gx,gy,vx,vy,theta) in enumerate(agent_init):
+            #     self.agents[i].set(px,py,gx,gy,vx,vy,theta)
+            #     self.agents[i].task_done=False
+            for agent in self.agents:
+                if agent.id<len(agent_init):
+                    (px,py,gx,gy,vx,vy,theta) = agent_init[agent.id]
+                    agent.set(px,py,gx,gy,vx,vy,theta)
+                    agent.task_done = False
+                else:
+                    agent.set(999, 999, 999, 999, 0,0, 0)
+                    agent.task_done = True
         else:
             for agent in self.agents:
-                if active_agent[agent.id]:
+                if self.active_agent[agent.id]:
                     self._spawner.spawnAgent(agent)
                     agent.task_done = False
                 else:
@@ -215,7 +244,7 @@ class RobotCrowdSim:
                     agent.task_done = True
 
         # randomize agent attributes
-        if self.phase == "test" and random_attribute_seed is not None:
+        if self.phase == "test" and random_attribute_seed is not None and random_attribute is None:
             np.random.seed(random_attribute_seed)
             if self.robot_random_pref_v_and_size:
                 for agent_id in self.robots:
@@ -224,6 +253,13 @@ class RobotCrowdSim:
                 for agent_id in self.humans:
                     self.agents[agent_id].sample_random_attributes()
             np.random.seed(self.random_seed)
+        elif self.phase == "test" and random_attribute_seed is None and random_attribute is not None:
+            for agent in self.agents:
+                if agent.id<len(random_attribute):
+                    (v_pref,radius) = random_attribute[agent.id]
+                    agent.v_pref = v_pref
+                    agent.radius = radius
+                    # agent.task_done = False
         else:
             if self.robot_random_pref_v_and_size:
                 for agent_id in self.robots:
@@ -246,9 +282,27 @@ class RobotCrowdSim:
 
         return obs, share_obs,available_actions
     
-    def step(self, actions, rec=False):
+    def step(self, actions, rec=False, new_human=None):
         available_actions = None
         self._render.robot_rec = rec
+
+        # handle agent disappear
+        if self._scenario == "ucy_students":
+            for agent in self.agents:
+                if agent.task_done:
+                    if agent.px > -3 and agent.px < 3 and agent.py>-3 and agent.py<3 and self.phase!="test":
+                        pass # become static obstacle
+                    else:
+                        agent.set(999,999,999,999,0,0,0)
+
+        # add new human
+        if new_human is not None:
+            (px,py,gx,gy,vx,vy,theta) = new_human
+            #check non activate Human instance
+            new_agent_id = np.where(self.active_agent == False)[0]
+            self.agents[new_agent_id].set(px,py,gx,gy,vx,vy,theta)
+            self.agents[new_agent_id].task_done = False
+
         # robot step
         for agent_id in self.robots:
             assert self.agents[agent_id].agent_type == "robot"
@@ -304,6 +358,11 @@ class RobotCrowdSim:
             dones.append(done)
             infos.append(info)
 
+        # summarize task_done agent:
+        for agent in self.agents:
+            if agent.task_done:
+                self.active_agent[agent.id] = False
+
         return (
             obs, share_obs, 
             rewards, 
@@ -324,18 +383,19 @@ class RobotCrowdSim:
     
     def _initHumanPreferenceVector(self,preference=None):
         task = np.zeros(self._human_preference_vector_dim)
-        if self._human_preference_type == "category" and self._use_human_preference:
-            if preference is None:
-                random_index = np.random.randint(0, self._human_preference_vector_dim)
+        if self._use_human_preference:
+            if self._human_preference_type == "category":
+                if preference is None:
+                    random_index = np.random.randint(0, self._human_preference_vector_dim)
+                else:
+                    assert preference<self._human_preference_vector_dim and isinstance(preference,int)
+                    random_index = preference
+                # Create a one-hot vector
+                task[random_index] = 1
             else:
-                assert preference<self._human_preference_vector_dim and isinstance(preference,int)
-                random_index = preference
-            # Create a one-hot vector
-            task[random_index] = 1
-        else:
-            raise NotImplementedError
-            task = np.random.randn(self._human_preference_vector_dim)
-            task = task / np.linalg.norm(task)
+                raise NotImplementedError
+                task = np.random.randn(self._human_preference_vector_dim)
+                task = task / np.linalg.norm(task)
         return task
     
     def _get_agent_obs(self,agent_id):
@@ -366,14 +426,29 @@ class RobotCrowdSim:
                 self._get_agent_obs(agent_id)
             )
             
-
+        # do not consider the order of the agents
         s_obs = []
         s_obs.append(np.hstack(obs))
         for i,agent in enumerate(self.agents):
             s_obs.append(np.array(agent.get_position(),dtype=np.float32))
         s_obs = np.hstack(s_obs)
+        all_s_obs = [s_obs]*(self.n_agents)
+        # # do consider the order of the agents
+        # all_s_obs = []
+        # for i,agent in enumerate(self.agents): 
+        #     s_obs = []
+        #     s_obs.append(obs[i])
+        #     for j,other in enumerate(self.agents):
+        #         if j==i:continue
+        #         s_obs.append(obs[j])
+        #     s_obs.append(np.array(agent.get_position(),dtype=np.float32))
+        #     for j,other in enumerate(self.agents):
+        #         if j==i:continue
+        #         s_obs.append(np.array(other.get_position(),dtype=np.float32))
+        #     s_obs = np.hstack(s_obs)
+        #     all_s_obs.append(s_obs)
 
-        return obs,[s_obs]*(self.n_agents)
+        return obs,all_s_obs
     
     def _checkAgentCollision(self,agent:Agent):
         collision = self._map.checkCollision(agent)

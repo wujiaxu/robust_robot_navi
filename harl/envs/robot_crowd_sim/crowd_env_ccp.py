@@ -41,7 +41,9 @@ class RobotCrowdSimCCP(RobotCrowdSim):
     
     def reset(self, seed: tp.Optional[int]=None, 
                     preference: tp.Optional[tp.List[int]]=None,
-                    random_attribute_seed:tp.Optional[int]=None):
+                    random_attribute_seed:tp.Optional[int]=None,
+                    agent_init: tp.Optional[tp.List[tp.Tuple]]=None,
+                    random_attribute: tp.Optional[tp.List[tp.Tuple]]=None,):
         available_actions = None
         self._num_episode_steps = 0
         train_seed_begin = [0, 10, 100, 1000, 10000]
@@ -55,21 +57,56 @@ class RobotCrowdSimCCP(RobotCrowdSim):
         else:
             self.random_seed = base_seed[self.phase] + self.case_counter[self.phase] + self.thisSeed
         np.random.seed(self.random_seed)
-        
+        if agent_init is None:
+            if self._random_human_num:
+                human_num_this_episode = np.random.randint(self._minimum_human_num,self._human_num+1)
+                active_human = np.zeros(self._human_num, dtype=bool)
+                active_human[:human_num_this_episode] = True
+                # Shuffle the vector to randomly distribute the `True` values
+                np.random.shuffle(active_human)
+            else:
+                # human_num_this_episode = self._human_num
+                active_human = np.ones(self._human_num, dtype=bool)
+            self.active_agent = np.hstack([np.ones(self._robot_num,bool),active_human])
+        else:
+            active_human = np.zeros(self._human_num+self._robot_num, dtype=bool)
+            active_human[:len(agent_init)] = True
+            self.active_agent = active_human
+
         # assert self._robot_num == 1 #TODO multiple robots
-        if self.phase == "test" and seed is not None:
+        if self.phase == "test" and seed is not None and agent_init is None:
             if seed == -1:
                 self.agents[0].set(0, -(self._map_size/2-1), 0, (self._map_size/2-1), 0, 0, np.pi/2)
                 self.agents[1].set(3, 0.1, -3, -0, 0,0, np.pi)
                 self.agents[2].set(-3, -0.1, 3, -0, 0,0, -np.pi)
             else:
                 for agent in self.agents:
-                    self._spawner.spawnAgent(agent)
+                    if self.active_agent[agent.id]:
+                        self._spawner.spawnAgent(agent)
+                        agent.task_done = False
+                    else:
+                        agent.set(999, 999, 999, 999, 0,0, 0)
+                        agent.task_done = True
+        elif self.phase == "test" and seed is not None and agent_init is not None:
+            # for i, (px,py,gx,gy,vx,vy,theta) in enumerate(agent_init):
+            #     self.agents[i].set(px,py,gx,gy,vx,vy,theta)
+            #     self.agents[i].task_done=False
+            for agent in self.agents:
+                if agent.id<len(agent_init):
+                    (px,py,gx,gy,vx,vy,theta) = agent_init[agent.id]
+                    agent.set(px,py,gx,gy,vx,vy,theta)
                     agent.task_done = False
+                else:
+                    agent.set(999, 999, 999, 999, 0,0, 0)
+                    agent.task_done = True
         else:
             for agent in self.agents:
-                self._spawner.spawnAgent(agent)
-                agent.task_done = False
+                if self.active_agent[agent.id]:
+                    self._spawner.spawnAgent(agent)
+                    agent.task_done = False
+                else:
+                    agent.set(999, 999, 999, 999, 0,0, 0)
+                    agent.task_done = True
 
         # randomize agent attributes
         if self.phase == "test" and random_attribute_seed is not None:
@@ -81,6 +118,13 @@ class RobotCrowdSimCCP(RobotCrowdSim):
                 for agent_id in self.humans:
                     self.agents[agent_id].sample_random_attributes()
             np.random.seed(self.random_seed)
+        elif self.phase == "test" and random_attribute_seed is None and random_attribute is not None:
+            for agent in self.agents:
+                if agent.id<len(random_attribute):
+                    (v_pref,radius) = random_attribute[agent.id]
+                    agent.v_pref = v_pref
+                    agent.radius = radius
+                    # agent.task_done = False
         else:
             if self.robot_random_pref_v_and_size:
                 for agent_id in self.robots:
@@ -93,7 +137,7 @@ class RobotCrowdSimCCP(RobotCrowdSim):
         t = time.time()
         self.reward_weight_changing_countdown -= (t-self.current_time)
         self.current_time = t
-        if preference:
+        if preference is not None:
             for i, agent_id in enumerate(self.humans):
                 self._crowd_preference[agent_id] = preference[i]
         elif preference is None and self.reward_weight_changing_countdown<0:

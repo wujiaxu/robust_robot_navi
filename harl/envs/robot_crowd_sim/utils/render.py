@@ -20,11 +20,11 @@ class Render:
         # self.render_axis.set_facecolor((0, 0, 0, 0))  # Axes background transparency
         #(0, 0) is the bottom-left corner and (1, 1) is the top-right corner of the axis.
         # self.text = self.render_axis.text(-3.9, -3.9, 'v:{}[m/s]'.format(0.), fontsize=14, color='black')
-        self.crowd_pref_text = self.render_axis.text(-size/2.+1,
+        self.crowd_pref_text = self.render_axis.text(-size/2.+0.1,
                                                      size/2.-0.3, 
                                                      'crowd_pref:{}'.format(-1), fontsize=14, color='black')
-        self.crowd_pref_text.set_visible(False)
-        self.robot_log_prob_text = self.render_axis.text(-size/2.+1,
+        # self.crowd_pref_text.set_visible(False)
+        self.robot_log_prob_text = self.render_axis.text(-size/2.+0.1,
                                                      size/2.-0.6, 
                                                      'robot input prob:{}'.format(-1), fontsize=14, color='black')
         self.robot_log_prob_text.set_visible(False)
@@ -51,11 +51,12 @@ class Render:
             'beige', 'bisque', 'coral', 'crimson', 'gold', 'indigo', 'khaki', 'lavender',
             'navy', 'salmon', 'tan', 'teal', 'aqua', 'maroon', 'chartreuse', 'turquoise'
         ]
+        self.agent_colors_alpha = [1,0.8,0.6,0.4]
 
         self.trajs = {}
         self.traj_data = {}
         for agent in self._agents:
-            self.trajs[agent.id] =  mlines.Line2D([], [], color=self.agent_colors[agent.id])
+            self.trajs[agent.id] =  mlines.Line2D([], [], color=self.agent_colors[agent.id%len(self.agent_colors)], alpha=self.agent_colors_alpha[agent.id//len(self.agent_colors)])
             self.render_axis.add_line(self.trajs[agent.id])
 
         self._distracted_human = []
@@ -91,8 +92,9 @@ class Render:
         agent_goal_labels = []
         # add crowd
         for i,agent in enumerate(self._agents):
-            agent_color = self.agent_colors[agent.id]
-            goal=mlines.Line2D([agent.gx], [agent.gy], color=agent_color, marker='*', linestyle='None', markersize=15)
+            agent_color = self.agent_colors[agent.id%len(self.agent_colors)]
+            alpha=self.agent_colors_alpha[agent.id//len(self.agent_colors)]
+            goal=mlines.Line2D([agent.gx], [agent.gy], color=agent_color, marker='*', linestyle='None', markersize=15,alpha=alpha)
             agent_goals.append(goal)
             agent_goal_labels.append("{}_goal".format(agent.id))
             self.render_axis.add_artist(goal)
@@ -101,7 +103,7 @@ class Render:
             fill = True
             if agent.agent_type == "robot" and self.robot_rec == True:
                 fill = False
-            agent_disk=patches.Circle(agent.get_position(), agent.radius, fill=fill, color=agent_color)
+            agent_disk=patches.Circle(agent.get_position(), agent.radius, fill=fill, color=agent_color,alpha=alpha)
             agent_disks.append(agent_disk)
             if agent.id in self._distracted_humans:
                 agent_labels.append("{}_{}".format(i,"distracted_human"))
@@ -118,6 +120,10 @@ class Render:
             current_traj = np.array(self.traj_data[agent.id])
             self.trajs[agent.id].set_data(current_traj[:,0].tolist(),
                     current_traj[:,1].tolist())
+            if agent.px == 999 and agent.py==999:
+                self.trajs[agent.id].set_visible(False)
+            else:
+                self.trajs[agent.id].set_visible(True)
             
             # render scan
             if agent.id in self.current_scans.keys():
@@ -166,9 +172,10 @@ class Render:
                             str(round(preference[key][0],1))+"-"+str(round(preference[key][1],1))
                             )
                 self.crowd_pref_text.set_text('time:{:.2f},'.format(time)+pref_text)
-                self.crowd_pref_text.set_visible(True)
+                # self.crowd_pref_text.set_visible(True)
             else:
-                self.crowd_pref_text.set_visible(False)
+                self.crowd_pref_text.set_text('time:{:.2f},'.format(time))
+                # self.crowd_pref_text.set_visible(False)
             if log_probs is not None:
                 if log_probs[0] is not None:
                     self.robot_log_prob_text.set_text('robot input prob:{:.2f},'.format(log_probs[0]))

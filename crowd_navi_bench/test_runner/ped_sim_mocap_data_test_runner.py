@@ -2,10 +2,11 @@
 
 import time
 import numpy as np
+from pathlib import Path
 import torch
 import setproctitle
-from harl.envs.robot_crowd_sim.crowd_env import RobotCrowdSim
 from harl.envs.robot_crowd_sim.evaluation.data import RawData
+from harl.envs.robot_crowd_sim.evaluation.evaluation import compute_min_NN_distance,compute_winding_angle,compute_ade,compute_fde
 from harl.envs.robot_crowd_sim.utils.info import *
 from harl.algorithms.actors import ALGO_REGISTRY
 from harl.utils.trans_tools import _t2n
@@ -37,9 +38,9 @@ class OnPolicyTestRunner:
         self.algo_args = algo_args
         self.env_args = env_args
         self.algo_args["eval"]["n_eval_rollout_threads"] = 1
-        self.env_args["scenario"] = args["scenario"]
-        self.env_args["human_num"] = args["human_num"]
-        self.env_args["robot_num"] = 0
+        # self.env_args["scenario"] = args["scenario"]
+        # self.env_args["human_num"] = args["human_num"]
+        # self.env_args["robot_num"] = 0
         self.env_args["human_policy"] = self.args["human_policy"]
         self.env_args["max_episode_length"] = 100
         # self.crowd_preference = args["crowd_preference"] if args["crowd_preference"]>=0 else None
@@ -55,9 +56,13 @@ class OnPolicyTestRunner:
         self.device = init_device(algo_args["device"])
         self.human_data_file = self.args["human_data_file"]
         if os.path.exists(self.human_data_file):
-            self.human_data = RawData()
-            self.human_data.load_trajectory_data(self.human_data_file)
+            print("load data")
+            data = np.load(self.human_data_file, allow_pickle=True)
+            init_positions, trajs, wds, min_dists = data
+            self.human_data=trajs["{}p".format(self.env_args["human_num"])]#+trajs["3p"]
+            
         else:
+            raise RuntimeError
             self.human_data = None
         
         # create test dir
@@ -78,7 +83,12 @@ class OnPolicyTestRunner:
         # set the config of env
         self.manual_expand_dims = True
         self.env_num = 1
-        self.envs = RobotCrowdSim(env_args,phase="test",nenv=1)
+        if self.env_args["human_preference_type"]=="ccp":
+            from harl.envs.robot_crowd_sim.crowd_env_ccp import RobotCrowdSimCCP
+            self.envs = RobotCrowdSimCCP(env_args,phase="test",nenv=1)
+        else:
+            from harl.envs.robot_crowd_sim.crowd_env import RobotCrowdSim
+            self.envs = RobotCrowdSim(env_args,phase="test",nenv=1)
 
         self.num_agents = get_num_agents(args["env"], env_args, self.envs)
 
@@ -124,18 +134,56 @@ class OnPolicyTestRunner:
         assert self.human_data is not None
         if self.manual_expand_dims:
             # this env needs manual expansion of the num_of_parallel_envs dimension
-            for e in range(1): #TODO multiple dataset
-                total_frame_num = self.human_data.num_steps-self.human_data.start_step
-                curr = self.human_data.position[self.human_data.start_step]
-                velo = self.human_data.velocity[self.human_data.start_step]
-                active_human_id = np.where(self.human_data.mask_p[self.human_data.start_step]==1)[0]
-                #TODO
-                for v in range(10):
+            self.generated_human_data = []
+            self.evaluations = []
+            for e,scene in enumerate(self.human_data): #TODO multiple dataset
+                agent_init=[]
+                num_steps = []
+                v_pref_radius = []
+                generated_trajs = []
+                ades = np.zeros((20,self.num_agents))
+                fdes = np.zeros((20,self.num_agents))
+                wds = []
+                nn_dists= []
+                p_maxs = []
+                p_mins = []
+                for traj in scene:
+                    traj = np.array(traj)
+                    p_max = np.max(traj[:,:2],axis=0)
+                    p_min = np.min(traj[:,:2],axis=0)
+                    p_maxs.append(p_max)
+                    p_mins.append(p_min)
+                offset = (np.max(np.array(p_maxs),axis=0)+np.min(np.array(p_min),axis=0))/2
+                print(offset)
+                for traj in scene:
+                    traj = np.array(traj)
+                    px,py = traj[0,0]-offset[0],traj[0,1]-offset[1]
+                    velo = (traj[1:,:2]-traj[:-1,:2])/0.25
+                    speed = np.linalg.norm(velo,axis=-1)
+                    max_speed = np.max(speed)
+                    print(max_speed)
+                    size = 0.25
+                    v_pref_radius.append((max_speed,size))
+                    vx,vy = (traj[1,0]-traj[0,0])/0.25,(traj[1,1]-traj[0,1])/0.25
+                    gx,gy = traj[-1,0]-offset[0],traj[-1,1]-offset[1]
+                    theta = np.arctan2(gy-py,gx-px)
+                    agent_init.append((px,py,gx,gy,vx,vy,theta))
+                    num_steps.append(len(traj))
+                
+                for v in range(20):
                     np.random.seed(v)
-                    preference = [np.random.randint(0, 
-                                                    self.envs._human_preference_vector_dim) 
-                                  for _ in range(len(self.envs.humans))]
-                    eval_obs, _, eval_available_actions = self.envs.reset(seed=e,preference=preference)
+                    if self.env_args["human_preference_type"]=="ccp":
+                        preference = []
+                        for _ in range(len(self.envs.humans)):
+                            self.envs.goal_weight = np.random.uniform(self.envs.wg_min,self.envs.wg_max)
+                            self.envs.collision_weight = np.random.uniform(self.envs.wca_min,self.envs.wca_max)
+                            preference.append(np.array([(self.envs.goal_weight-self.envs.wg_min)/(self.envs.wg_max-self.envs.wg_min),
+                                            (self.envs.collision_weight-self.envs.wca_min)/(self.envs.wca_max-self.envs.wca_min)])) 
+                    else:
+                        preference = [np.random.randint(0, 
+                                                        self.envs._human_preference_vector_dim) 
+                                    for _ in range(len(self.envs.humans))]
+                    eval_obs, _, eval_available_actions = self.envs.reset(seed=e,preference=preference,random_attribute=v_pref_radius,agent_init=agent_init)
                     self.video_recorder.init(self.envs, enabled=True)
 
                     eval_obs = np.expand_dims(np.array(eval_obs), axis=0)
@@ -153,7 +201,8 @@ class OnPolicyTestRunner:
                     )
                     rewards = 0
                     step = 0
-                    while step<total_frame_num:
+                    masks = []
+                    while step<max(num_steps):
                         eval_actions_collector = []
                         for agent_id in range(self.num_agents):
                             eval_actions, temp_rnn_state = self.actor[agent_id].act(
@@ -167,21 +216,21 @@ class OnPolicyTestRunner:
                             eval_actions_collector.append(_t2n(eval_actions))
                         eval_actions = np.array(eval_actions_collector).transpose(1, 0, 2)[0]
                         
-                        # get new ped
-                        curr_active_human_id = np.where(self.human_data.mask_p[self.human_data.start_step+step]==1)[0]
-                        new_id = np.setdiff1d(curr_active_human_id, active_human_id)
-                        new_human = []
-                        for human_id in new_id:
+                        # # get new ped #TODO for ucy
+                        # curr_active_human_id = np.where(self.human_data.mask_p[self.human_data.start_step+step]==1)[0]
+                        # new_id = np.setdiff1d(curr_active_human_id, active_human_id)
+                        # new_human = []
+                        # for human_id in new_id:
 
-                            curr = self.human_data.position[self.human_data.start_step+step,human_id]
-                            velo = self.human_data.velocity[self.human_data.start_step+step,human_id]
-                            destination =self.human_data.destination[self.human_data.start_step+step,human_id]
-                            new_human.append(
-                                (curr[0],curr[1],
-                                 destination[0],destination[1],
-                                 velo[0],velo[1],
-                                 np.arctan2(velo[1],velo[0])))
-                        active_human_id = np.concatenate([active_human_id,new_id])
+                        #     curr = self.human_data.position[self.human_data.start_step+step,human_id]
+                        #     velo = self.human_data.velocity[self.human_data.start_step+step,human_id]
+                        #     destination =self.human_data.destination[self.human_data.start_step+step,human_id]
+                        #     new_human.append(
+                        #         (curr[0],curr[1],
+                        #          destination[0],destination[1],
+                        #          velo[0],velo[1],
+                        #          np.arctan2(velo[1],velo[0])))
+                        # active_human_id = np.concatenate([active_human_id,new_id])
                         (
                             eval_obs,
                             eval_share_obs,
@@ -204,7 +253,7 @@ class OnPolicyTestRunner:
                         )  # logger callback at each step of evaluation
                         rewards += eval_rewards[0][0]
                         eval_obs = np.expand_dims(np.array(eval_obs), axis=0)
-                        
+                        masks.append(eval_dones)
                         # TODO save to video recoder
                         self.video_recorder.record(self.envs)
                         step +=1
@@ -219,11 +268,37 @@ class OnPolicyTestRunner:
                         #     break
                     
                     self.logger.test_log(e) #TODO dont overwrite
+                    masks = ~np.array(masks)
+                    generated_trajs.append(([np.array(self.envs._render.traj_data[agent_id])+offset for agent_id in range(self.num_agents)],masks))
+                    for agent_id in range(self.num_agents):
+                        gt_traj = np.array(scene[agent_id])[:,:2]
+                        pred_traj = np.array(self.envs._render.traj_data[agent_id])+offset
+                        ade = compute_ade(pred_traj[1:gt_traj.shape[0]],gt_traj[1:],masks[:,agent_id][:gt_traj.shape[0]-1])
+                        fde = compute_fde(pred_traj[1:gt_traj.shape[0]],gt_traj[1:])
+                        ades[v,agent_id] = ade
+                        fdes[v,agent_id] = fde
+                        for other_id in range(self.num_agents):
+                            if other_id == agent_id: continue
+                            other_traj = np.array(self.envs._render.traj_data[other_id])+offset
+                            wd = compute_winding_angle(pred_traj,other_traj)
+                            nn_dist = compute_min_NN_distance(pred_traj[1:],other_traj[1:],masks[:,agent_id])
+                            wds.append(wd)
+                            nn_dists.append(nn_dist)
                     # save video 
                     self.video_recorder.save(
                         "test_episode_{}_{}_{}.mp4".format(
                         e,v,''.join(map(str, preference))),
                         save_pdf=True)
+                k_ades = np.min(ades,axis=0)
+                k_fdes = np.min(fdes,axis=0)
+                # print((k_ades,k_fdes,wds,nn_dists))
+                # input()
+                self.evaluations.append((k_ades,k_fdes,wds,nn_dists))
+                self.generated_human_data.append(generated_trajs)
+
+            data = np.array((self.generated_human_data,self.evaluations), dtype=object)
+            np.save(Path(self.log_dir) / "generated_data.npy", data)
+            print(f'Saved processed data to {Path(self.log_dir) / "generated_data.npy"}\n')
         else:
             # this env does not need manual expansion of the num_of_parallel_envs dimension
             # such as dexhands, which instantiates a parallel env of 64 pair of hands
@@ -361,9 +436,6 @@ if __name__ == "__main__":
         help="Algorithm name. Choose from: robot_crowd_happo.",
     )
     parser.add_argument(
-        "--seed", type=int, default=1, help="model seed."
-    )
-    parser.add_argument(
         "--env",
         type=str,
         default="crowd_env",
@@ -376,6 +448,9 @@ if __name__ == "__main__":
         "--human_policy", type=str, default="ai", help="human policy."
     )
     parser.add_argument(
+        "--seed", type=int, default=1, help="model seed."
+    )
+    parser.add_argument(
         "--scenario",
         type=str,
         default="circle_cross",
@@ -383,29 +458,30 @@ if __name__ == "__main__":
             "circle_cross",
             "corridor",
             "ucy_students",
+            "room_256",
         ],
         help="scenario name",
     )
     parser.add_argument(
-        "--exp_name", type=str, default="ai_crowdsim_5p_rvs_3c_smallcirclecross", help="Experiment name."
+        "--exp_name", type=str, default="ai_crowdsim_2p_rvs_ccp_room256", help="Experiment name."
     )
     parser.add_argument(
         "--test_episode", type=int, default=10, help="Experiment iteration."
     )
     parser.add_argument(
-        "--human_num", type=int, default=3, help="Experiment iteration."
+        "--human_num", type=int, default=5, help="Experiment iteration."
     )
     parser.add_argument(
         "--model_dir",
         type=str,
-        default="/home/dl/wu_ws/robust_robot_navi/results_codeVer_1_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_4p_3c_rvs_smallcirclecross",
+        default="/home/dl/wu_ws/robust_robot_navi/room256_results_ver_1_seed_1/crowd_env_ccp/crowd_navi/robot_crowd_ppo/ppo_2p_ccp_rvs_room256",
+        # default="/home/dl/wu_ws/robust_robot_navi/room256_results_ver_1_seed_1/crowd_env_ccp/crowd_navi/robot_crowd_ppo/ppo_4p_ccp_rvs_room256",
         help="If set, load existing experiment config file instead of reading from yaml config file.",
     )
     parser.add_argument(
         "--human_data_file",
         type=str,
-        # default="/home/dl/wu_ws/robust_robot_navi/harl/envs/crowd_robot_sim/data_origin/UCY_Dataset_time108-162_timeunit0.08.npy",
-        default="",
+        default="/home/dl/wu_ws/robust_robot_navi/harl/envs/robot_crowd_sim/data_origin/2p3p_dataset.npy",
         help="If set, load existing experiment config file instead of reading from yaml config file.",
     )
     # parser.add_argument( #TODO

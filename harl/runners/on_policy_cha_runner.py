@@ -450,6 +450,8 @@ class OnPolicyCMDPRunner:
                                         action,
                                         self.actor_buffer[agent_id].active_masks[step])
                 aux_rewards[:,agent_id] = -np.log(1./self.env_args["human_preference_vector_dim"])-_t2n(loss)
+                # if np.any(aux_rewards<0):
+                #     print(_t2n(action),_t2n(loss))
         
         # (n_agents, n_threads, dim) -> (n_threads, n_agents, dim)
         actions = np.array(action_collector).transpose(1, 0, 2)

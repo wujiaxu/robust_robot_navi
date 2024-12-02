@@ -1,4 +1,10 @@
-{
+
+from harl.utils.configs_tools import save_config
+
+config_name = ""
+
+main_args = {}
+config = {
     "algo_args":	{
         "algo":	{
             "action_aggregation":	"prod",
@@ -7,32 +13,32 @@
             "critic_epoch":	5,
             "critic_num_mini_batch":	1,
             "entropy_coef":	0.01,
-            "fixed_order":	false,
+            "fixed_order":	False,
             "gae_lambda":	0.95,
             "gamma":	0.99,
             "huber_delta":	10.0,
             "intrinsic_reward_scale":	0.1,
-            "discriminator_loss_scale": 0.01,
+            "discriminator_loss_scale": 0.1,
             "max_grad_norm":	10.0,
             "ppo_epoch":	5,
-            "share_param":	false,
-            "use_clipped_value_loss":	true,
-            "use_discriminator":	true,
-            "use_gae":	true,
-            "use_huber_loss":	true,
-            "use_max_grad_norm":	true,
-            "use_policy_active_masks":	true,
+            "share_param":	True,
+            "use_clipped_value_loss":	True,
+            "use_discriminator":	False,
+            "use_gae":	True,
+            "use_huber_loss":	True,
+            "use_max_grad_norm":	True,
+            "use_policy_active_masks":	True,
             "value_loss_coef":	1
         },
         "device":	{
-            "cuda":	true,
-            "cuda_deterministic":	true,
+            "cuda":	True,
+            "cuda_deterministic":	True,
             "torch_threads":	8
         },
         "eval":	{
             "eval_episodes":	10,
             "n_eval_rollout_threads":	9,
-            "use_eval":	true
+            "use_eval":	True
         },
         "logger":	{
             "log_dir":	"./results"
@@ -40,7 +46,7 @@
         "model":	{
             "activation_func":	"relu",
             "critic_lr":	0.0005,
-            "custom":	true,
+            "custom":	True,
             "data_chunk_length":	10,
             "gain":	0.01,
             "hidden_sizes":	[
@@ -53,52 +59,54 @@
             "recurrent_n":	1,
             "std_x_coef":	1,
             "std_y_coef":	0.5,
-            "use_feature_normalization":	true,
-            "use_naive_recurrent_policy":	false,
-            "use_recurrent_policy":	true,
+            "use_feature_normalization":	True,
+            "use_naive_recurrent_policy":	False,
+            "use_recurrent_policy":	True,
             "weight_decay":	0
         },
         "render":	{
             "render_episodes":	10,
-            "use_render":	false
+            "use_render":	False
         },
         "seed":	{
             "seed":	1,
-            "seed_specify":	true
+            "seed_specify":	True
         },
         "train":	{
             "episode_length":	40,
             "eval_interval":	25,
             "log_interval":	5,
             "model_dir":	null,
-            "n_rollout_threads":	32,
-            "num_env_steps":	8000000,
-            "use_linear_lr_decay":	true,
-            "use_proper_time_limits":	true,
-            "use_valuenorm":	true
+            "n_rollout_threads":	64,
+            "num_env_steps":	4000000,
+            "use_linear_lr_decay":	True,
+            "use_proper_time_limits":	True,
+            "use_valuenorm":	True
         }
     },
     "env_args":	{
-        "continuous_actions":	true,
+        "continuous_actions":	True,
         "discomfort_dist":	1.0,
         "discomfort_penalty_factor":	0.2,
         "goal_factor":	2,
         "goal_range":	0.3,
         "human_fov":	110,
         "human_n_scan":	720,
-        "human_num":	10,
+        "human_num":	4,
         "human_preference_type":	"category",
         "human_preference_vector_dim":	3,
-        "human_random_pref_v_and_size": true,
+        "human_random_pref_v_and_size": True,
+        "random_human_num":True,
+        "minimum_human_num":2,
         "human_radius":	0.3,
         "human_rotation_constrain":	180,
         "human_v_pref":	1.0,
-        "human_visible":	true,
+        "human_visible":	True,
         "laser_angle_resolute":	0.008726646,
         "laser_max_range":	4.0,
         "laser_min_range":	0.0,
-        "map_size":	8,
-        "max_episode_length":	60,
+        "map_size":	6.2,
+        "max_episode_length":	48,
         "n_laser":	720,
         "penalty_backward":	0.2,
         "penalty_collision":	-20,
@@ -106,21 +114,14 @@
         "robot_num":	0,
         "robot_radius":	0.3,
         "robot_rotation_constrain":	180,
-        "robot_random_pref_v_and_size": false,
         "robot_v_pref":	1.0,
-        "robot_visible":	true,
+        "robot_visible":	True,
+        "robot_random_pref_v_and_size": False,
         "scenario":	"circle_cross",
         "state_type":	"FP",
         "task":	"crowd_navi",
-        "use_discriminator":	true,
+        "use_discriminator":	False,
         "velo_factor":	0.2,
-        "with_static_obstacle":	true
+        "with_static_obstacle":	True
     },
-    "main_args":	{
-        "algo":	"robot_crowd_happo",
-        "cuda_device":	"cuda:2",
-        "env":	"crowd_env",
-        "exp_name":	"robust_navi",
-        "load_config":	""
-    }
 }

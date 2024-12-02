@@ -2,6 +2,7 @@
 
 conda_env=url_navi
 seed=1
+version=1
 optimality=0.90
 optimalitystr=$(printf "%.2f" "$optimality")
 # configs
@@ -30,7 +31,10 @@ group5=circle_cross_10p_rvs
 happo_10p_sp_rvs_circlecross=happo_10p_sp_rvs_circlecross
 ppo_10p_3c_rvs_circlecross=ppo_10p_3c_rvs_circlecross
 
-result_dir=results_seed_"$seed" 
+ppo_4p_ccp_rvs_room256=ppo_4p_ccp_rvs_room256
+ppo_2p_ccp_rvs_room256=ppo_2p_ccp_rvs_room256
+ppo_3p_ccp_rvs_room256=ppo_3p_ccp_rvs_room256
+result_dir=room256_results_ver_"$version"_seed_"$seed"  
 
 # python scripts/train_robust_agent.py \
 #     --log_dir $result_dir \
@@ -42,14 +46,32 @@ result_dir=results_seed_"$seed"
 #     --cuda_device cuda:0
 conda_env=url_navi
 declare -a sessions_and_scripts=(
+    # "ccp1: scripts/train_robust_agent.py \
+    # --log_dir $result_dir \
+    # --seed $seed \
+    # --algo robot_crowd_ppo \
+    # --env crowd_env_ccp \
+    # --exp_name $ppo_5p_ccp_rvs_circlecross \
+    # --load_config tuned_configs/$ppo_5p_ccp_rvs_circlecross.json \
+    # --cuda_device cuda:1"
+
     "ccp1: scripts/train_robust_agent.py \
     --log_dir $result_dir \
     --seed $seed \
     --algo robot_crowd_ppo \
     --env crowd_env_ccp \
-    --exp_name $ppo_5p_ccp_rvs_circlecross \
-    --load_config tuned_configs/$ppo_5p_ccp_rvs_circlecross.json \
+    --exp_name $ppo_3p_ccp_rvs_room256 \
+    --load_config tuned_configs/$ppo_3p_ccp_rvs_room256.json \
     --cuda_device cuda:1"
+    "ccp2: scripts/train_robust_agent.py \
+    --log_dir $result_dir \
+    --seed $seed \
+    --algo robot_crowd_ppo \
+    --env crowd_env_ccp \
+    --exp_name $ppo_2p_ccp_rvs_room256 \
+    --load_config tuned_configs/$ppo_2p_ccp_rvs_room256.json \
+    --cuda_device cuda:2"
+
 
     # "wo_d: scripts/train_robust_agent.py --algo robot_crowd_happo_woD --env crowd_env --exp_name robust_navi_ablation_woD --cuda_device cuda:1"
 )
