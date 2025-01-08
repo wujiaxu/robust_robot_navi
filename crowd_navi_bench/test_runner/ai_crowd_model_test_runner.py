@@ -77,7 +77,7 @@ class OnPolicyTestRunner:
             self.envs = RobotCrowdSim(self.env_args,phase="test",nenv=1)
 
         self.num_agents = get_num_agents(args["env"], self.env_args, self.envs)
-
+        
         # actor 
         algo_args["algo"]["use_discriminator"] = False #since we test robot
         self.actor = []
@@ -335,6 +335,7 @@ if __name__ == "__main__":
 
     algo_args["train"]["model_dir"] = os.path.join(model_dir,"models")
     algo_args["render"]["render_episodes"] = test_episode
+    algo_args["algo"]["human_preference_vector_dim"] = env_args["human_preference_vector_dim"]
     human_model_algo_args["train"]["model_dir"] = os.path.join(human_model_dir,"models")
     runner = OnPolicyTestRunner(args, algo_args, env_args,human_model_algo_args)
     runner.run()

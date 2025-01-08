@@ -22,11 +22,17 @@ class OnPolicyActorBuffer:
         self.rnn_hidden_size = self.hidden_sizes[-1]
         self.recurrent_n = args["recurrent_n"]
 
+        self.down_sample_lidar_scan_bin = args.get("down_sample_lidar_scan_bin",720)
+        self.human_preference_dim = args["human_preference_vector_dim"]
+
         obs_shape = get_shape_from_obs_space(obs_space)
 
         if isinstance(obs_shape[-1], list):
             obs_shape = obs_shape[:1]
-
+        if self.down_sample_lidar_scan_bin != 720:
+            obs_dim = obs_shape[-1]
+            obs_dim -= (720-self.down_sample_lidar_scan_bin)
+            obs_shape = obs_shape[:-1] + (obs_dim,)
         # Buffer for observations of this actor.
         self.obs = np.zeros(
             (self.episode_length + 1, self.n_rollout_threads, *obs_shape),
@@ -92,8 +98,9 @@ class OnPolicyActorBuffer:
         active_masks=None,
         available_actions=None,
     ):
+        new_obs = self.human_feature_extractor(obs)
         """Insert data into actor buffer."""
-        self.obs[self.step + 1] = obs.copy()
+        self.obs[self.step + 1] = new_obs.copy()
         self.rnn_states[self.step + 1] = rnn_states.copy()
         self.actions[self.step] = actions.copy()[...,:self.actions.shape[-1]] #unpadding #TODO check impact
         self.action_log_probs[self.step] = action_log_probs.copy()
@@ -104,6 +111,15 @@ class OnPolicyActorBuffer:
             self.available_actions[self.step + 1] = available_actions.copy()
 
         self.step = (self.step + 1) % self.episode_length
+
+    def human_feature_extractor(self,obs):
+        if self.down_sample_lidar_scan_bin != 720:
+            indices = np.linspace(0, 720 - 1, self.down_sample_lidar_scan_bin, dtype=int)
+            scan = obs[...,6:726][...,indices]
+            new_obs = np.concatenate([obs[...,:6],scan,obs[...,726:]],axis=-1)
+        else:
+            new_obs = obs
+        return new_obs
 
     def after_update(self):
         """After an update, copy the data at the last step to the first position of the buffer."""

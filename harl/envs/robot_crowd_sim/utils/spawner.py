@@ -196,6 +196,7 @@ class UCYstudentsSpawner(Spawner):
 
             px,py = self.area[spawn_area_id].get_random_position()
             gx,gy = self.area[goal_area_id].get_random_position()
+            if (gx-px)**2+(gy-py)**2<4**2:continue
             # TODO consider obstacle
             collide = False
             for other in self._agents:

@@ -34,7 +34,7 @@ class RNNLayer(nn.Module):
             # x is a (T, N, -1) tensor that has been flatten to (T * N, -1)
             N = hxs.size(0)
             T = int(x.size(0) / N)
-
+            # print(N,T,x.shape,hxs.shape)
             # unflatten
             x = x.view(T, N, x.size(1))
 

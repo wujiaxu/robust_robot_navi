@@ -64,7 +64,7 @@ def extract_data(file,keys):
     for key in keys:
         for k in results:
             if key in k:
-                data.append(np.array(results[k])[:,-1])
+                data.append(np.array(results[k])[:,1:])
     
     return data
 
@@ -89,13 +89,18 @@ def draw_discriminator_curve(root,dirs,labels,agent_num=5,figure_name="discrimin
 
 def draw_crowd_success_rate(root,dirs,labels,figure_name="success_rate"):
     key = "eval_crowd_navi_performance/success_rate"
-    fig, ax = plt.subplots(figsize=(8, 8))
+    fig, ax = plt.subplots(figsize=(5, 5))
     for dir,label in zip(dirs,labels):
         dir = Path(root)/Path(dir)
         log_dir_str = find_seed_directories(dir,1)[0]+"/logs"
-        success_rate = extract_data(Path(log_dir_str)/"summary.json",[key])[0]
-        plt.plot([i for i in range(success_rate.shape[0])],success_rate,label=label)
-    plt.legend(loc='upper center', bbox_to_anchor=(.5, -.05), ncol=3,fontsize=10)
+        success_rate_step = extract_data(Path(log_dir_str)/"summary.json",[key])[0]
+        success_rate = success_rate_step[:,1]*100
+        steps = success_rate_step[:,0]
+        plt.plot(steps,success_rate,label=label)
+    plt.legend(loc='upper center', bbox_to_anchor=(.5, 0.3), ncol=1,fontsize=10)
+    plt.xlabel("steps",fontsize=10)
+    plt.ylabel("success rate [%]",fontsize=10)
+    plt.savefig("result_figures/{}.png".format(figure_name))
     with PdfPages("result_figures/{}.pdf".format(figure_name)) as pdf:
         pdf.savefig(fig, bbox_inches='tight')
 
@@ -180,7 +185,7 @@ def draw_robot_danger_frequency(root,dir1,dir2,labels,
 
     return
 
-def perform_t_test(results1,results2,alternative="less"):
+def perform_t_test(results1,results2,alternative='greater'):
     """
     alternative : {'two-sided', 'less', 'greater'}, optional
         Defines the alternative hypothesis.
@@ -314,6 +319,7 @@ def test_robot_navi_room361():
                  "crowd_navi_bench/results/crowd_env/crowd_navi/robot_crowd_happo",
                  model+"_vs_"+d
              )
+            
             # print(np.sum(np.logical_and(average_time[1:]==average_time[:-1],
             #                              collision_rate[1:]>collision_rate[:-1]) ),success_rate)
             if np.logical_or(collision_rate[0]!=0,
@@ -332,14 +338,22 @@ def test_robot_navi_room361():
             test_success_rates[model][d] = success_rate
             test_ave_navitimes[model][d] = average_time[-1]
             average_time_0 = np.zeros_like(average_time)
-            average_time_0[1:] = average_time[:-1]
-            navi_time = np.array(
-                [i for i in range(1,average_time.shape[0]+1)]
-                )*average_time-average_time_0
-            test_navitimes[model][d] = navi_time
-    print(test_success_rates)
-    print(test_collision_rates)
-    print(test_ave_navitimes)
+            # print(np.array(
+            #                         [i for i in range(1,average_time.shape[0]+1)]
+            #                         )*average_time)
+            average_time_0[1:] = np.diff(np.array(
+                                    [i for i in range(1,average_time.shape[0]+1)]
+                                    )*average_time)
+            average_time_0[0]  = average_time[0]
+            # navi_time = np.array(
+            #     [i for i in range(1,average_time.shape[0]+1)]
+            #     )*average_time-average_time_0
+            test_navitimes[model][d] = average_time_0
+            # print(average_time_0)
+            # input()
+    # print(test_success_rates)
+    # print(test_collision_rates)
+    # print(test_ave_navitimes)
     for k1 in test_success_rates:
         for k2 in test_success_rates:
             if k1==k2:continue
@@ -348,27 +362,27 @@ def test_robot_navi_room361():
             #homogeneous 
             for k in homogeneous:
                 results1.append(test_success_rates[k1][k])
-            for k in test_success_rates[k2]:
+            for k in homogeneous:
                 results2.append(test_success_rates[k2][k])
             p_value = perform_z_test(results1,results2)
-            print("homogeneous success_rate",k1,k2,p_value)
+            print("homogeneous success_rate",k1,k2,p_value, sum(results1)/len(results1),sum(results2)/len(results2))
             results1 = []
             results2 = []
             #heterogeneous
-            for k in homogeneous+heterogeneous:
+            for k in heterogeneous:
                 results1.append(test_success_rates[k1][k])
-            for k in test_success_rates[k2]:
+            for k in heterogeneous:
                 results2.append(test_success_rates[k2][k])
             p_value = perform_z_test(results1,results2)
-            print("heterogeneous success_rate",k1,k2,p_value)
+            print("heterogeneous success_rate",k1,k2,p_value, sum(results1)/len(results1),sum(results2)/len(results2))
             results1 = []
             results2 = []
             for k in homogeneous+heterogeneous:
                 results1.append(test_success_rates[k1][k])
-            for k in test_success_rates[k2]:
+            for k in homogeneous+heterogeneous:
                 results2.append(test_success_rates[k2][k])
             p_value = perform_z_test(results1,results2)
-            print("all success_rate",k1,k2,p_value)
+            print("all success_rate",k1,k2,p_value, sum(results1)/len(results1),sum(results2)/len(results2))
     for k1 in test_navitimes:
         for k2 in test_navitimes:
             if k1==k2:continue
@@ -379,7 +393,9 @@ def test_robot_navi_room361():
             for k in homogeneous:
                 results2.append(test_navitimes[k2][k])
             p_value = perform_t_test(results1,results2)
-            print("homogeneous navi_time",k1,k2,p_value)
+            print("homogeneous navi_time",k1,k2,p_value,
+                  np.mean(np.concatenate(results1)),np.std(np.concatenate(results1)),
+                  np.mean(np.concatenate(results2)),np.std(np.concatenate(results2)))
             results1 = []
             results2 = []
             for k in heterogeneous:
@@ -387,7 +403,9 @@ def test_robot_navi_room361():
             for k in heterogeneous:
                 results2.append(test_navitimes[k2][k])
             p_value = perform_t_test(results1,results2)
-            print("heterogeneous navi_time",k1,k2,p_value)
+            print("heterogeneous navi_time",k1,k2,p_value,
+                  np.mean(np.concatenate(results1)),np.std(np.concatenate(results1)),
+                  np.mean(np.concatenate(results2)),np.std(np.concatenate(results2)))
             results1 = []
             results2 = []
             for k in homogeneous+heterogeneous:
@@ -395,7 +413,9 @@ def test_robot_navi_room361():
             for k in homogeneous+heterogeneous:
                 results2.append(test_navitimes[k2][k])
             p_value = perform_t_test(results1,results2)
-            print("all navi_time",k1,k2,p_value)
+            print("all navi_time",k1,k2,p_value,
+                  np.mean(np.concatenate(results1)),np.std(np.concatenate(results1)),
+                  np.mean(np.concatenate(results2)),np.std(np.concatenate(results2)))
     # for k1 in test_collision_rates:
     #     for k2 in test_collision_rates:
     #         if k1==k2:continue
@@ -856,9 +876,9 @@ if __name__ =="__main__":
 
     # 6 test different between model trained on different simulator
     # 6.1 room361
-    test_robot_navi_room361()
+    # test_robot_navi_room361()
     # # 6.2 circlecross
-    test_robot_navi_circlecross()
+    # test_robot_navi_circlecross()
 
     # 7 distance between robot and cell phone walker (with vis vs without vis)
     # test_distracted_aware_robot_navi_room361()
@@ -868,3 +888,31 @@ if __name__ =="__main__":
     #     "results_seed_1/crowd_env/crowd_navi/robot_crowd_happo",
     #     ["c0.90_happo_5p_3c_rvs_room361"]
     # )
+    draw_crowd_success_rate(
+        "results_seed_1/crowd_env/crowd_navi/robot_crowd_happo",
+        [
+         "c0.90_happo_5p_3c_rvs_circlecross",
+         "happo_5p_3c_rvs_circlecross",
+          "c0.90_happo_10p_3c_rvs_circlecross",
+         "happo_10p_3c_rvs_circlecross",],
+        ["With Lagrange multiplier 5H","Fixed reward weight 5H",
+          "With Lagrange multiplier 10H","Fixed reward weight 10H"],
+        figure_name="ablation_test_lagrange_success_rate_circlecross"
+    )
+    # draw_crowd_success_rate(
+    #     "results_seed_1/crowd_env/crowd_navi/robot_crowd_happo",
+    #     [
+    #      "c0.90_happo_10p_3c_rvs_circlecross",
+    #      "happo_10p_3c_rvs_circlecross",],
+    #     ["With Lagrange multiplier","Fixed contraint weight"],
+    #     figure_name="ablation_test_lagrange_success_rate_10p_circlecross"
+    # )
+
+    # 9 centralized critic
+    root = "/home/dl/wu_ws/robust_robot_navi"
+    proposed_5p = "results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_5p_3c_rvs_circlecross"
+    proposed_10p = "results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_10p_3c_rvs_circlecross"
+    ablation_5p = "results_codeVer_1_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_ppo_5p_3c_rvs_circlecross"
+    ablation_10p = "results_codeVer_1_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_ppo_10p_3c_rvs_circlecross"
+    draw_crowd_success_rate(root,[proposed_5p,ablation_5p,proposed_10p,ablation_10p],["CTDE 5H","Independent 5H","CTDE 10H","Independent 10H"],"ablation_test_CTDE")
+    # draw_crowd_success_rate(root,[proposed_10p,ablation_10p],["Proposed","Ablation"],"ablation_test_CTDE_10p")

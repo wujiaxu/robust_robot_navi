@@ -8,7 +8,7 @@ from harl.common.valuenorm import ValueNorm
 from harl.common.buffers.on_policy_actor_buffer import OnPolicyActorBuffer
 from harl.common.buffers.on_policy_critic_buffer_ep import OnPolicyCriticBufferEP
 from harl.common.buffers.on_policy_critic_buffer_fp import OnPolicyCriticBufferFP
-from harl.common.buffers.on_policy_critic_buffer_cmdp import OnPolicyCriticBufferCMDP
+from harl.common.buffers.on_policy_critic_buffer_cmdp_fp import OnPolicyCriticBufferCMDPFP
 from harl.algorithms.actors import ALGO_REGISTRY
 from harl.algorithms.critics.v_critic import DoubleVCritic, VCritic
 from harl.algorithms.lagrange.lagrange import Lagrange
@@ -182,7 +182,7 @@ class OnPolicyCMDPRunner:
             self.actor_buffer = []
             for agent_id in range(self.num_agents):
                 ac_bu = OnPolicyActorBuffer(
-                    {**algo_args["train"], **algo_args["model"]},
+                    {**algo_args["train"], **algo_args["model"],**algo_args["algo"]},
                     self.envs.observation_space[agent_id],
                     self.envs.action_space[agent_id],
                 )
@@ -206,7 +206,18 @@ class OnPolicyCMDPRunner:
             + "/critic_agent"
             + ".pt"
             )
-            self.base_critic.critic.load_state_dict(base_critic_state_dict)
+            new_state_dict = {}
+            for old_key, value in base_critic_state_dict.items():
+                if "robot_state_encoder" in old_key or "robot_scan_encoder" in old_key:continue
+
+                if "human_scan_encoder" in old_key:
+                    new_key = old_key.replace("human_scan_encoder", "scan_encoder")  # Adjust as needed
+                elif "human_state_encoder" in old_key:
+                    new_key = old_key.replace("human_state_encoder", "state_encoder")  # Adjust as needed
+                else:
+                    new_key = old_key
+                new_state_dict[new_key] = value
+            self.base_critic.critic.load_state_dict(new_state_dict)
             self.base_critic.prep_rollout()
             self.base_value_normalizer = ValueNorm(1, device=self.device)
             
@@ -220,7 +231,7 @@ class OnPolicyCMDPRunner:
 
                 # FP stands for Feature Pruned, as phrased by MAPPO paper.
                 # In FP, the global states for all agents are different, and thus needs the dimension of the number of agents.
-            self.critic_buffer = OnPolicyCriticBufferCMDP(
+            self.critic_buffer = OnPolicyCriticBufferCMDPFP(
             {**algo_args["train"], **algo_args["model"], **algo_args["algo"]},
             share_observation_space,
             self.num_agents,
@@ -467,6 +478,7 @@ class OnPolicyCMDPRunner:
         values = np.array(
             np.split(_t2n(value), self.algo_args["train"]["n_rollout_threads"])
         )
+    
         aux_values = np.array(
             np.split(_t2n(aux_value), self.algo_args["train"]["n_rollout_threads"])
         )

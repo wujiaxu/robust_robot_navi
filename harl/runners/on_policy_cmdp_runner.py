@@ -8,9 +8,9 @@ from harl.common.valuenorm import ValueNorm
 from harl.common.buffers.on_policy_actor_buffer import OnPolicyActorBuffer
 from harl.common.buffers.on_policy_critic_buffer_ep import OnPolicyCriticBufferEP
 from harl.common.buffers.on_policy_critic_buffer_fp import OnPolicyCriticBufferFP
-from harl.common.buffers.on_policy_critic_buffer_cmdp import OnPolicyCriticBufferCMDP
+from harl.common.buffers.on_policy_critic_buffer_cmdp_fp import OnPolicyCriticBufferCMDP
 from harl.algorithms.actors import ALGO_REGISTRY
-from harl.algorithms.critics.v_critic import DoubleVCritic, VCritic, DoubleDecVCritic
+from harl.algorithms.critics.v_critic import DoubleVCritic, VCritic
 from harl.algorithms.lagrange.lagrange import Lagrange
 from harl.utils.trans_tools import _t2n
 from harl.utils.envs_tools import (
@@ -188,9 +188,9 @@ class OnPolicyCMDPRunner:
                 )
                 self.actor_buffer.append(ac_bu)
 
-            self.critic = DoubleDecVCritic(
+            self.critic = DoubleVCritic(
                 {**algo_args["model"], **algo_args["algo"]},
-                self.envs.observation_space[0],
+                centralized=False,
                 device=self.device,
             )
             share_observation_space = self.envs.share_observation_space[0]

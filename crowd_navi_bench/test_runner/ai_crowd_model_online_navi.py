@@ -19,9 +19,9 @@ from harl.utils.configs_tools import init_dir, save_config
 from harl.envs import LOGGER_REGISTRY
 from pathlib import Path
 from harl.common.video import VideoRecorder
-from crowd_navi_bench.density_model.auto_encoder import VAE
+# from crowd_navi_bench.density_model.auto_encoder import VAE
 from harl.algorithms.critics.twin_continuous_q_critic import TwinContinuousQCritic
-from harl.algorithms.actors.recovery_ddpg import RecoveryDDPG
+# from harl.algorithms.actors.recovery_ddpg import RecoveryDDPG
 import matplotlib.pyplot as plt
 import pickle
 from crowd_navi_bench.crowd_policy.socialforce import SocialForce
@@ -106,7 +106,7 @@ class OnPolicyTestRunner:
             )
         human_policy_actor_state_dict = torch.load(
             str(human_model_algo_args["train"]["model_dir"])
-            + "/actor_agent1"
+            + "/actor_agent0"
             + ".pt"
         )
         human_agent.actor.load_state_dict(human_policy_actor_state_dict)
@@ -122,12 +122,13 @@ class OnPolicyTestRunner:
 
         # init video recorder for debug
         self.video_recorder = VideoRecorder(self.log_dir)
-        self.vae = VAE(device=self.args["cuda_device"], learning_rate=1e-4,latent_dim=32)
-        self.vae.load_model("/home/dl/wu_ws/HARL/crowd_navi_bench/density_model/090_4p_6c_rvs_circlecross_vae_model_7799.pth")
-        self.vae.eval()
+
+        # self.vae = VAE(device=self.args["cuda_device"], learning_rate=1e-4,latent_dim=32)
+        # self.vae.load_model("/home/dl/wu_ws/HARL/crowd_navi_bench/density_model/090_4p_6c_rvs_circlecross_vae_model_7799.pth")
+        # self.vae.eval()
 
     def load_recovery(self,device,
-                  model_dir="/home/dl/wu_ws/HARL/crowd_navi_bench/single_life_results/crowd_env/crowd_navi/robot_crowd_happo/ldm_model_train_on_ai_090_4p_6c_rvs_circlecross/seed-00001-2024-10-16-23-13-37"):
+                  model_dir="/home/dl/wu_ws/robust_robot_navi/crowd_navi_bench/single_life_results/crowd_env/crowd_navi/robot_crowd_happo/ldm_model_train_on_ai_090_4p_6c_rvs_circlecross/seed-00001-2024-10-16-23-13-37"):
         import gym.spaces
         config_file = Path(model_dir)/"config.json"
         with open(config_file, encoding="utf-8") as file:
@@ -202,9 +203,8 @@ class OnPolicyTestRunner:
                     robot_action = np.clip(eval_actions_collector[0],
                                            np.array([-1,-1]),
                                            np.array([1,1]))
-                    log_prob = self.vae.estimate_log_probability(np.concatenate([eval_obs[:,0,:726],robot_action],axis=-1))
-                    # log_probs.append(np.exp(log_prob.item()/728))
-                    log_probs.append(-log_prob.item())
+                    # log_prob = self.vae.estimate_log_probability(np.concatenate([eval_obs[:,0,:726],robot_action],axis=-1))
+                    # log_probs.append(-log_prob.item())
 
                     # rev_act = self.pr.get_actions(eval_obs[:,0,:726],False)
                     G = self.critic_ldm.get_values(eval_obs[:,0,:726],robot_action)
@@ -257,7 +257,7 @@ class OnPolicyTestRunner:
                     
                     # TODO save to video recoder
                     self.video_recorder.record(self.envs)
-                    self.envs.record_current_log_prob(0,np.exp(log_prob.item()/728))
+                    # self.envs.record_current_log_prob(0,np.exp(log_prob.item()/728))
 
                     if eval_dones[0]:
                         print(f"this episode {e} end at {time_step} total reward: {rewards}")
@@ -354,9 +354,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--scenario",
         type=str,
-        default="circle_cross",
+        default="room_256",
         choices=[
             "room_361",
+            "room_256",
             "circle_cross",
             "corridor",
         ],
@@ -377,13 +378,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_dir",
         type=str,
-        default="/home/dl/wu_ws/HARL/crowd_navi_bench/results/crowd_env/crowd_navi/robot_crowd_happo/train_on_ai_090_4p_6c_rvs_circlecross/seed-00001-2024-09-28-20-00-06",
+        default="/home/dl/wu_ws/robust_robot_navi/crowd_navi_bench/results/crowd_env/crowd_navi/robot_crowd_happo/train_on_ai_090_4p_3c_rvs_circlecross/seed-00001-2024-10-10-10-49-34",
         help="If set, load existing experiment config file instead of reading from yaml config file.",
     )
     parser.add_argument(
         "--human_model_dir",
         type=str,
-        default="/home/dl/wu_ws/HARL/results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/happo_5p_sp_rvs_circlecross/seed-00001-2024-09-25-19-49-07",
+        default="/home/dl/wu_ws/robust_robot_navi/results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_5p_3c_rvs_circlecross/seed-00001-2024-09-27-10-55-42",
         # default="/home/dl/wu_ws/HARL/results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_5p_6c_rvs_circlecross/seed-00001-2024-09-27-14-39-00",
         help="If set, load existing experiment config file instead of reading from yaml config file.",
     )

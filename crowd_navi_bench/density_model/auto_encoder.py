@@ -1,4 +1,4 @@
-from harl.models.policy_models.custom_stochastic_policy import RobotBase
+from harl.models.base.robot_crowd_base import RobotCrowdBase
 from harl.common.data_recorder import DataRecorder
 from harl.utils.envs_tools import check
 import torch
@@ -71,7 +71,7 @@ class VAE(nn.Module):
         super(VAE, self).__init__()
         args = {}
         # Encoder
-        self.encoder = RobotBase(args,2)
+        self.encoder = RobotCrowdBase(args,True)
         
         # Latent space (mean and log variance)
         self.fc_mu = nn.Linear(self.encoder.repr_dim+2, latent_dim)

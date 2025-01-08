@@ -8,10 +8,51 @@ from .trajectory_utils import prediction_output_to_trajectories
 from matplotlib import pyplot as plt
 import pdb
 
+def calculate_density_zero_centered(agents, W, H, s, ws):
+    # Number of grid cells in each dimension
+    rows = int(np.ceil(H / s))
+    cols = int(np.ceil(W / s))
+    
+    # Initialize the density matrix
+    density = np.zeros((rows, cols))
+    
+    # Half window size
+    half_ws = ws / 2
+    
+    # Shift factor for zero-centered coordinates
+    shift_x = W / 2
+    shift_y = H / 2
+    
+    # Assign agents to grid cells within the window
+    for agent in agents:
+        x,y = agent.get_position()
+        # Shift coordinates to positive space
+        x_shifted = x + shift_x
+        y_shifted = y + shift_y
+        
+        # Determine the range of grid indices affected by the window
+        i_min = max(0, int((y_shifted - half_ws) // s))
+        i_max = min(rows - 1, int((y_shifted + half_ws) // s))
+        j_min = max(0, int((x_shifted - half_ws) // s))
+        j_max = min(cols - 1, int((x_shifted + half_ws) // s))
+        
+        # Increment density for all cells within the window
+        for i in range(i_min, i_max + 1):
+            for j in range(j_min, j_max + 1):
+                density[i, j] += 1
+    
+    # Normalize by window area (optional)
+    density /= (ws * ws)
+    
+    return np.max(density)
+
 def compute_winding_angle(traj_a,traj_b):
+    length = min(traj_a.shape[0],traj_b.shape[0])
+    traj_a = traj_a[:length]
+    traj_b = traj_b[:length]
     # winding_angle=0
     wabs = traj_a-traj_b
-    wabs = np.arctan2(wabs[:,1],wabs[:,0])
+    angles = np.arctan2(wabs[:,1],wabs[:,0])
     # for frame in traj_a:
     #     t = frame[-1]
     #     corr_frame = traj_b[traj_b[:,2]==t,:]
@@ -19,8 +60,11 @@ def compute_winding_angle(traj_a,traj_b):
     #     wab = corr_frame[0,:2]-frame[:2]
     #     wabs.append(np.arctan2(wab[1],wab[0]))
     # wabs = np.array(wabs)
-    d_wabs = wabs[1:]-wabs[:-1]
-    winding_angle=np.sum(d_wabs)
+    # Unwrap angles to ensure continuity
+    unwrapped_angles = np.unwrap(angles)
+
+    # Calculate winding angle (total angular displacement)
+    winding_angle = unwrapped_angles[-1] - unwrapped_angles[0]
     return winding_angle
 
 def compute_min_NN_distance(traj_a,traj_b,mask):

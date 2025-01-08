@@ -136,6 +136,8 @@ class OnPolicyTestRunner:
             # this env needs manual expansion of the num_of_parallel_envs dimension
             self.generated_human_data = []
             self.evaluations = []
+            num_collision = 0
+            num_reachgoal = 0
             for e,scene in enumerate(self.human_data): #TODO multiple dataset
                 agent_init=[]
                 num_steps = []
@@ -257,6 +259,11 @@ class OnPolicyTestRunner:
                         # TODO save to video recoder
                         self.video_recorder.record(self.envs)
                         step +=1
+                        for info in eval_infos:
+                            if isinstance(info["episode_info"],Collision):
+                                num_collision+=1
+                            elif isinstance(info["episode_info"],ReachGoal):
+                                num_reachgoal+=1
                         # if np.all(eval_dones):
                         #     print(f"total reward of this episode: {rewards}")
                         #     # SFM:92%
@@ -284,16 +291,18 @@ class OnPolicyTestRunner:
                             nn_dist = compute_min_NN_distance(pred_traj[1:],other_traj[1:],masks[:,agent_id])
                             wds.append(wd)
                             nn_dists.append(nn_dist)
+                   
                     # save video 
-                    self.video_recorder.save(
-                        "test_episode_{}_{}_{}.mp4".format(
-                        e,v,''.join(map(str, preference))),
-                        save_pdf=True)
+                    # self.video_recorder.save(
+                    #     "test_episode_{}_{}_{}.mp4".format(
+                    #     e,v,''.join(map(str, preference))),
+                    #     save_pdf=True)
+                    
                 k_ades = np.min(ades,axis=0)
                 k_fdes = np.min(fdes,axis=0)
-                # print((k_ades,k_fdes,wds,nn_dists))
+                
                 # input()
-                self.evaluations.append((k_ades,k_fdes,wds,nn_dists))
+                self.evaluations.append((k_ades,k_fdes,wds,nn_dists,num_collision,num_reachgoal))
                 self.generated_human_data.append(generated_trajs)
 
             data = np.array((self.generated_human_data,self.evaluations), dtype=object)
@@ -463,7 +472,7 @@ if __name__ == "__main__":
         help="scenario name",
     )
     parser.add_argument(
-        "--exp_name", type=str, default="ai_crowdsim_2p_rvs_ccp_room256", help="Experiment name."
+        "--exp_name", type=str, default="ai_crowdsim_2p_rvs_6c_room256", help="Experiment name."
     )
     parser.add_argument(
         "--test_episode", type=int, default=10, help="Experiment iteration."
@@ -474,7 +483,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_dir",
         type=str,
-        default="/home/dl/wu_ws/robust_robot_navi/room256_results_ver_1_seed_1/crowd_env_ccp/crowd_navi/robot_crowd_ppo/ppo_2p_ccp_rvs_room256",
+        default="/home/dl/wu_ws/robust_robot_navi/room256_results_ver_1_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_2p_6c_rvs_room256",
         # default="/home/dl/wu_ws/robust_robot_navi/room256_results_ver_1_seed_1/crowd_env_ccp/crowd_navi/robot_crowd_ppo/ppo_4p_ccp_rvs_room256",
         help="If set, load existing experiment config file instead of reading from yaml config file.",
     )

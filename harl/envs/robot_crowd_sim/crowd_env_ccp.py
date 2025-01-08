@@ -189,7 +189,7 @@ class RobotCrowdSimCCP(RobotCrowdSim):
         elif agent.dg<self._goal_range:
             reward = self._reward_goal*self.goal_weight #* (1-self._num_episode_steps/self._max_episode_length)
             done = True
-            episode_info = ReachGoal()
+            episode_info = ReachGoal(self.global_time)
             agent.task_done = True
         elif self._num_episode_steps >= self._max_episode_length:
             reward = 0#-self._reward_goal

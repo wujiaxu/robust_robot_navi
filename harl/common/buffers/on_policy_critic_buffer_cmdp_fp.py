@@ -3,9 +3,9 @@ import torch
 import numpy as np
 from harl.utils.envs_tools import get_shape_from_obs_space
 from harl.utils.trans_tools import _flatten, _ma_cast
+from harl.common.buffers.on_policy_critic_buffer_fp import OnPolicyCriticBufferFP
 
-
-class OnPolicyCriticBufferCMDP:
+class OnPolicyCriticBufferCMDPFP(OnPolicyCriticBufferFP):
     """On-policy buffer for critic that uses Feature-Pruned (FP) state.
     When FP state is used, the critic takes different global state as input for different actors. Thus, OnPolicyCriticBufferFP has an extra dimension for number of agents compared to OnPolicyCriticBufferEP.
     """
@@ -17,58 +17,7 @@ class OnPolicyCriticBufferCMDP:
             share_obs_space: (gym.Space or list) share observation space
             num_agents: (int) number of agents
         """
-        self.episode_length = args["episode_length"]
-        self.n_rollout_threads = args["n_rollout_threads"]
-        self.hidden_sizes = args["hidden_sizes"]
-        self.rnn_hidden_size = self.hidden_sizes[-1]
-        self.recurrent_n = args["recurrent_n"]
-        self.gamma = args["gamma"]
-        self.gae_lambda = args["gae_lambda"]
-        self.use_gae = args["use_gae"]
-        self.use_proper_time_limits = args["use_proper_time_limits"]
-
-        share_obs_shape = get_shape_from_obs_space(share_obs_space)
-
-        if isinstance(share_obs_shape[-1], list):
-            share_obs_shape = share_obs_shape[:1]
-
-        # Buffer for share observations
-        self.share_obs = np.zeros(
-            (
-                self.episode_length + 1,
-                self.n_rollout_threads,
-                num_agents,
-                *share_obs_shape,
-            ),
-            dtype=np.float32,
-        )
-
-        # Buffer for rnn states of critic
-        self.rnn_states_critic = np.zeros(
-            (
-                self.episode_length + 1,
-                self.n_rollout_threads,
-                num_agents,
-                self.recurrent_n,
-                self.rnn_hidden_size,
-            ),
-            dtype=np.float32,
-        )
-
-        # Buffer for value predictions made by this critic
-        self.value_preds = np.zeros(
-            (self.episode_length + 1, self.n_rollout_threads, num_agents, 1),
-            dtype=np.float32,
-        )
-
-        # Buffer for returns calculated at each timestep
-        self.returns = np.zeros_like(self.value_preds)
-
-        # Buffer for rewards received by agents at each timestep
-        self.rewards = np.zeros(
-            (self.episode_length, self.n_rollout_threads, num_agents, 1),
-            dtype=np.float32,
-        )
+        super(OnPolicyCriticBufferCMDPFP,self).__init__(args, share_obs_space, num_agents)
 
         # Buffer for value predictions made by this aux_critic
         self.aux_value_preds = np.zeros(
@@ -85,24 +34,13 @@ class OnPolicyCriticBufferCMDP:
             dtype=np.float32,
         )
 
-
-        # Buffer for masks indicating whether an episode is done at each timestep
-        self.masks = np.ones(
-            (self.episode_length + 1, self.n_rollout_threads, num_agents, 1),
-            dtype=np.float32,
-        )
-
-        # Buffer for bad masks indicating truncation and termination. If 0, trunction; if 1 and masks is 0, termination; else, not done yet.
-        self.bad_masks = np.ones_like(self.masks)
-
-        self.step = 0
-
     def insert(
         self, share_obs, rnn_states_critic, 
         value_preds, aux_value_preds, 
         rewards, aux_rewards, masks, bad_masks
     ):
         """Insert data into buffer."""
+        share_obs = self.human_feature_extractor(share_obs)
         self.share_obs[self.step + 1] = share_obs.copy()
         self.rnn_states_critic[self.step + 1] = rnn_states_critic.copy()
         self.value_preds[self.step] = value_preds.copy()
@@ -114,6 +52,18 @@ class OnPolicyCriticBufferCMDP:
 
         self.step = (self.step + 1) % self.episode_length
 
+    def human_feature_extractor(self,share_obs):
+        if self.down_sample_lidar_scan_bin == 720: return share_obs
+        obs = share_obs[...,:-self.num_agents*2].reshape(self.n_rollout_threads,self.num_agents,self.num_agents,726+self.human_preference_dim)
+        state = obs[...,:6]
+        scan = obs[...,6:726]
+        indices = np.linspace(0, 720 - 1, self.down_sample_lidar_scan_bin, dtype=int)
+        down_sampled_scan = scan[...,indices]
+        pref = obs[...,726:]
+        new_obs = np.concatenate([state,down_sampled_scan,pref],axis=-1).reshape(self.n_rollout_threads,self.num_agents,-1)
+        new_obs = np.concatenate([new_obs,share_obs[...,-self.num_agents*2:]],axis=-1)
+        return new_obs
+    
     def after_update(self):
         """After an update, copy the data at the last step to the first position of the buffer."""
         self.share_obs[0] = self.share_obs[-1].copy()
@@ -331,100 +281,6 @@ class OnPolicyCriticBufferCMDP:
                         self.returns[step + 1] * self.gamma * self.masks[step + 1]
                         + self.rewards[step]
                     )
-
-    def feed_forward_generator_critic(
-        self, critic_num_mini_batch=None, mini_batch_size=None
-    ):
-        """Training data generator for critic that uses MLP network.
-        Args:
-            critic_num_mini_batch: (int) Number of mini batches for critic.
-            mini_batch_size: (int) Size of mini batch for critic.
-        """
-
-        # get episode_length, n_rollout_threads, mini_batch_size
-        episode_length, n_rollout_threads, num_agents = self.rewards.shape[0:3]
-        batch_size = n_rollout_threads * episode_length * num_agents
-        if mini_batch_size is None:
-            assert batch_size >= critic_num_mini_batch, (
-                f"The number of processes ({n_rollout_threads}) "
-                f"* number of steps ({episode_length}) * number of agents ({num_agents}) = {n_rollout_threads * episode_length * num_agents} "
-                f"is required to be greater than or equal to the number of critic mini batches ({critic_num_mini_batch})."
-            )
-            mini_batch_size = batch_size // critic_num_mini_batch
-
-        # shuffle indices
-        rand = torch.randperm(batch_size).numpy()
-        sampler = [
-            rand[i * mini_batch_size : (i + 1) * mini_batch_size]
-            for i in range(critic_num_mini_batch)
-        ]
-
-        # Combine the first three dimensions (episode_length, n_rollout_threads, num_agents) to form batch.
-        # Take share_obs shape as an example:
-        # (episode_length + 1, n_rollout_threads, num_agents, *share_obs_shape) --> (episode_length, n_rollout_threads, num_agents, *share_obs_shape)
-        # --> (episode_length * n_rollout_threads * num_agents, *share_obs_shape)
-        share_obs = self.share_obs[:-1].reshape(-1, *self.share_obs.shape[3:])
-        rnn_states_critic = self.rnn_states_critic[:-1].reshape(
-            -1, *self.rnn_states_critic.shape[3:]
-        )  # actually not used, just for consistency
-        value_preds = self.value_preds[:-1].reshape(-1, 1)
-        returns = self.returns[:-1].reshape(-1, 1)
-        masks = self.masks[:-1].reshape(-1, 1)
-
-        for indices in sampler:
-            # share_obs shape:
-            # (episode_length * n_rollout_threads * num_agents, *share_obs_shape) --> (mini_batch_size, *share_obs_shape)
-            share_obs_batch = share_obs[indices]
-            rnn_states_critic_batch = rnn_states_critic[indices]
-            value_preds_batch = value_preds[indices]
-            return_batch = returns[indices]
-            masks_batch = masks[indices]
-
-            yield share_obs_batch, rnn_states_critic_batch, value_preds_batch, return_batch, masks_batch
-
-    def naive_recurrent_generator_critic(self, critic_num_mini_batch):
-        """Training data generator for critic that uses RNN network.
-        This generator does not split the trajectories into chunks,
-        and therefore maybe less efficient than the recurrent_generator_critic in training.
-        Args:
-            critic_num_mini_batch: (int) Number of mini batches for critic.
-        """
-
-        # get n_rollout_threads and num_envs_per_batch
-        _, n_rollout_threads, num_agents = self.rewards.shape[0:3]
-        batch_size = n_rollout_threads * num_agents
-        assert batch_size >= critic_num_mini_batch, (
-            f"PPO requires the number of processes ({n_rollout_threads})* number of agents ({num_agents}) "
-            f"to be greater than or equal to the number of "
-            f"PPO mini batches ({critic_num_mini_batch})."
-        )
-        num_envs_per_batch = batch_size // critic_num_mini_batch
-
-        # shuffle indices
-        perm = torch.randperm(batch_size).numpy()
-
-        # Reshape the buffers from (episode_length, n_rollout_threads, num_agents, *dim) to (episode_length, n_rollout_threads * num_agents, *dim)
-        share_obs = self.share_obs.reshape(-1, batch_size, *self.share_obs.shape[3:])
-        rnn_states_critic = self.rnn_states_critic.reshape(
-            -1, batch_size, *self.rnn_states_critic.shape[3:]
-        )
-        value_preds = self.value_preds.reshape(-1, batch_size, 1)
-        returns = self.returns.reshape(-1, batch_size, 1)
-        masks = self.masks.reshape(-1, batch_size, 1)
-
-        T, N = self.episode_length, num_envs_per_batch
-
-        # prepare data for each mini batch
-        for batch_id in range(critic_num_mini_batch):
-            start_id = batch_id * num_envs_per_batch
-            ids = perm[start_id : start_id + num_envs_per_batch]
-            share_obs_batch = _flatten(T, N, share_obs[:-1, ids])
-            value_preds_batch = _flatten(T, N, value_preds[:-1, ids])
-            return_batch = _flatten(T, N, returns[:-1, ids])
-            masks_batch = _flatten(T, N, masks[:-1, ids])
-            rnn_states_critic_batch = rnn_states_critic[0, ids]
-
-            yield share_obs_batch, rnn_states_critic_batch, value_preds_batch, return_batch, masks_batch
 
     def recurrent_generator_critic(self, critic_num_mini_batch, data_chunk_length):
         """Training data generator for critic that uses RNN network.

@@ -31,6 +31,8 @@ class RobotCrowdSim:
         self.human_policy = args.get("human_policy","ai")
         self.human_random_pref_v_and_size = args.get("human_random_pref_v_and_size",False)
         self.robot_random_pref_v_and_size = args.get("robot_random_pref_v_and_size",False)
+        self.use_static_human = args.get("use_static_human",False)
+        self.state_type = args["state_type"]
         self.args = copy.deepcopy(args)
         # map setup
         # self._with_static_obstacle = cfg.with_static_obstacle TODO
@@ -46,7 +48,7 @@ class RobotCrowdSim:
         elif self._scenario == "room_256":
             self._map = Map(3.5,3.5)
         elif self._scenario == "ucy_students":
-            self._map = Map(10,10)
+            self._map = Map(8,8)
         else:
             raise NotImplementedError
         self._time_step = 0.25
@@ -156,7 +158,7 @@ class RobotCrowdSim:
         self.global_time : float = 0
         self._num_episode_steps : int = 0
         self._max_episode_length: int = self.args["max_episode_length"]
-
+        # print(self._max_episode_length)
         # setup render
         self._render = Render(self._map,self.agents) #TODO multiple robots
 
@@ -180,7 +182,6 @@ class RobotCrowdSim:
                     agent_init: tp.Optional[tp.List[Tuple]]=None,
                     random_attribute: tp.Optional[tp.List[Tuple]]=None,):
         available_actions = None
-        self._num_episode_steps = 0
         train_seed_begin = [0, 10, 100, 1000, 10000]
         val_seed_begin = [0, 10, 100, 1000, 10000]
         test_seed_begin = [0, 10, 100, 1000, 10000]
@@ -214,6 +215,58 @@ class RobotCrowdSim:
                 self.agents[0].set(0, -(self._map_size/2-1), 0, (self._map_size/2-1), 0, 0, np.pi/2)
                 self.agents[1].set(3, 0.1, -3, -0, 0,0, np.pi)
                 self.agents[2].set(-3, -0.1, 3, -0, 0,0, -np.pi)
+                self.agents[0].task_done = False
+                self.agents[1].task_done = False
+                self.agents[2].task_done = False
+            elif seed == -2:
+                self.agents[0].set(0, -2, -1.,1.7, 0, 0, np.pi/2)
+                self.agents[1].set(0.5, 0.5, 0.5, 0.5, 0,0, np.pi)
+                self.agents[2].set(1.5, 0.5, 1.5, 0.5, 0,0, -np.pi)
+                self.agents[0].task_done = False
+                self.agents[1].task_done = False
+                self.agents[2].task_done = False
+            elif seed == -3:
+                self.agents[0].set(1.2, -2., -1.,1.7, 0, 0, np.pi/2)
+                self.agents[1].set(0.5, 0.5, 0.5, 0.5, 0,0, np.pi)
+                self.agents[2].set(1.5, 0.5, 1.5, 0.5, 0,0, -np.pi)
+                self.agents[0].task_done = False
+                self.agents[1].task_done = False
+                self.agents[2].task_done = False
+            elif seed == -4:
+                self.agents[0].set(1, -2, -1.,2, 0, 0, np.pi/2)
+                self.agents[1].set(-1, 2, 1, -2, 0,0, np.pi)
+                self.agents[2].set(-1, -2, 1, 2, 0,0, -np.pi)
+                self.agents[0].task_done = False
+                self.agents[1].task_done = False
+                self.agents[2].task_done = False
+            elif seed == -5:
+                self.agents[0].set(1, -2, -1.,2, 0, 0, np.pi/2)
+                self.agents[1].set(-1, 2, 1, 0, 0,0, np.pi)
+                self.agents[2].set(-1, -2, 1, 2, 0,0, -np.pi)
+                self.agents[0].task_done = False
+                self.agents[1].task_done = False
+                self.agents[2].task_done = False
+            elif seed == -6:
+                self.agents[0].set(0, -2, 0,2, 0, 0, np.pi/2)
+                self.agents[1].set(0, 2, 0, -2, 0,0, np.pi)
+                self.agents[2].set(-1, -2, -1, -2, 0,0, -np.pi)
+                self.agents[0].task_done = False
+                self.agents[1].task_done = False
+                self.agents[2].task_done = False
+            elif seed == -7:
+                self.agents[0].set(0, -2, 0,2, 0, 0, np.pi/2)
+                self.agents[1].set(1, 0, -1, 0, 0,0, np.pi)
+                self.agents[2].set(-1, 0, 1, 0, 0,0, -np.pi)
+                self.agents[0].task_done = False
+                self.agents[1].task_done = False
+                self.agents[2].task_done = False
+            elif seed == -8:
+                self.agents[0].set(0, -2, 0,2, 0, 0, np.pi/2)
+                self.agents[1].set(-1, 0, -1, 0, 0,0, np.pi)
+                self.agents[2].set(1, 0, 1, 0, 0,0, -np.pi)
+                self.agents[0].task_done = False
+                self.agents[1].task_done = False
+                self.agents[2].task_done = False
             else:
                 for agent in self.agents:
                     if self.active_agent[agent.id]:
@@ -238,7 +291,10 @@ class RobotCrowdSim:
             for agent in self.agents:
                 if self.active_agent[agent.id]:
                     self._spawner.spawnAgent(agent)
-                    agent.task_done = False
+                    if self.use_static_human and agent.agent_type == "human" and np.random.random()<0.05:
+                        agent.task_done = True
+                    else:
+                        agent.task_done = False
                 else:
                     agent.set(999, 999, 999, 999, 0,0, 0)
                     agent.task_done = True
@@ -283,6 +339,8 @@ class RobotCrowdSim:
         return obs, share_obs,available_actions
     
     def step(self, actions, rec=False, new_human=None):
+        assert self._num_episode_steps<self._max_episode_length
+        assert self.global_time<self._max_episode_length*self._time_step
         available_actions = None
         self._render.robot_rec = rec
 
@@ -406,10 +464,12 @@ class RobotCrowdSim:
                 return np.zeros(self.human_obs_dim,dtype=np.float32)
             
         scan, scan_end = self.agent_sensors[agent_id].getScan()
+        self.agents[agent_id].min_dist = np.min(scan)
         state = np.array(self.agents[agent_id].get_transformed_state(),
                           dtype=np.float32)
         prefer = np.zeros(self.discriminator_dim) if self.agents[agent_id].agent_type == "robot"\
                     else self._crowd_preference[agent_id]
+        
         return np.hstack([state,scan,prefer])
     
     def _genObservation(self):
@@ -426,27 +486,31 @@ class RobotCrowdSim:
                 self._get_agent_obs(agent_id)
             )
             
-        # do not consider the order of the agents
-        s_obs = []
-        s_obs.append(np.hstack(obs))
-        for i,agent in enumerate(self.agents):
-            s_obs.append(np.array(agent.get_position(),dtype=np.float32))
-        s_obs = np.hstack(s_obs)
-        all_s_obs = [s_obs]*(self.n_agents)
-        # # do consider the order of the agents
-        # all_s_obs = []
-        # for i,agent in enumerate(self.agents): 
-        #     s_obs = []
-        #     s_obs.append(obs[i])
-        #     for j,other in enumerate(self.agents):
-        #         if j==i:continue
-        #         s_obs.append(obs[j])
-        #     s_obs.append(np.array(agent.get_position(),dtype=np.float32))
-        #     for j,other in enumerate(self.agents):
-        #         if j==i:continue
-        #         s_obs.append(np.array(other.get_position(),dtype=np.float32))
-        #     s_obs = np.hstack(s_obs)
-        #     all_s_obs.append(s_obs)
+        if self.state_type == "EP":
+            # do not consider the order of the agents
+            s_obs = []
+            s_obs.append(np.hstack(obs))
+            for i,agent in enumerate(self.agents):
+                s_obs.append(np.array(agent.get_position(),dtype=np.float32))
+            s_obs = np.hstack(s_obs)
+            all_s_obs = [s_obs]*(self.n_agents)
+        elif self.state_type == "FP":
+            #do consider the order of the agents
+            all_s_obs = []
+            for i,agent in enumerate(self.agents): 
+                s_obs = []
+                s_obs.append(obs[i])
+                for j,other in enumerate(self.agents):
+                    if j==i:continue
+                    s_obs.append(obs[j])
+                s_obs.append(np.array(agent.get_position(),dtype=np.float32))
+                for j,other in enumerate(self.agents):
+                    if j==i:continue
+                    s_obs.append(np.array(other.get_position(),dtype=np.float32))
+                s_obs = np.hstack(s_obs)
+                all_s_obs.append(s_obs)
+        else:
+            raise NotImplementedError
 
         return obs,all_s_obs
     
@@ -475,7 +539,7 @@ class RobotCrowdSim:
         elif agent.dg<self._goal_range:
             reward = self._reward_goal #* (1-self._num_episode_steps/self._max_episode_length)
             done = True
-            episode_info = ReachGoal()
+            episode_info = ReachGoal(self.global_time)
             agent.task_done = True
         elif self._num_episode_steps >= self._max_episode_length:
             reward = 0#-self._reward_goal
@@ -493,5 +557,6 @@ class RobotCrowdSim:
                 #crowd with this panelty result in robot bad perform on test
                 # # 0.86 0.11 0.03 0.785 7.483 0.891
                 reward += self._discomfort_penalty_factor*(min_dist-self._discomfort_dist)
+                # reward += self._discomfort_penalty_factor*(min_dist-agent.min_dist)
                 episode_info = Discomfort(min_dist)
         return reward, done,{"episode_info":episode_info,"bad_transition":truncation}

@@ -3,11 +3,17 @@ from torch import nn
 import torch.nn.functional as F
 
 class StateEncoder(nn.Module):
-    def __init__(self, input_shape,args) -> None:
+    def __init__(self, input_shape,args,hidden_size=32,num_layer=1) -> None:
         super().__init__()
-        self.net = nn.Sequential(nn.Linear(input_shape, 32),
-                                   nn.LayerNorm(32))
-        self.repr_dim = 32
+        if num_layer==1:
+            self.net = nn.Sequential(nn.Linear(input_shape, hidden_size),
+                                   nn.LayerNorm(hidden_size))
+        elif num_layer==2:
+            self.net = nn.Sequential(nn.Linear(input_shape, hidden_size),
+                                   nn.LayerNorm(hidden_size),
+                                   nn.Linear(hidden_size, hidden_size),
+                                   nn.LayerNorm(hidden_size))
+        self.repr_dim = hidden_size
 
     def forward(self,x):
         return self.net(x)

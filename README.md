@@ -223,7 +223,12 @@ After these steps, you can apply the algorithms immediately as above.
 | MADDPG |            √            |                       |                             |
 | MATD3  |            √            |                       |                             |
 
-
+### Naming rule for crowd navigation task
+|        | task name (crowdsim/crowdnavi) | multi-agent | constraint | algorithm       | share parameter | representation (obs) |
+| :----: | crowdsim                       | √           | :--------: |:---------------:| :--------------:|:--------------------:|
+| :----: | crowdsim                       | √           | :--------: |:---------------:| :--------------:|:--------------------:|
+| :----: | :----------------------------: | :--------:  | :--------: |:---------------:| :--------------:|:--------------------:|
+| :----: | :----------------------------: | :--------:  | :--------: |:---------------:| :--------------:|:--------------------:|
 
 ## Performance on Cooperative MARL Benchmarks
 

@@ -10,20 +10,20 @@ import numpy as np
 import sys
 
 # sys.path.append('..')
-import .data as DATA
+# import .data as DATA
 
 
-def collision_count(position, threshold, real_position=None, reduction=None):
-    collisions = DATA.Pedestrians.collision_detection(position, threshold, real_position)
-    if reduction == 'sum':
-        out = torch.sum(collisions).item()
-    elif reduction == 'mean':
-        out = torch.mean(collisions).item()
-    elif reduction is None:
-        out = collisions
-    else:
-        raise NotImplementedError
-    return out
+# def collision_count(position, threshold, real_position=None, reduction=None):
+#     collisions = DATA.Pedestrians.collision_detection(position, threshold, real_position)
+#     if reduction == 'sum':
+#         out = torch.sum(collisions).item()
+#     elif reduction == 'mean':
+#         out = torch.mean(collisions).item()
+#     elif reduction is None:
+#         out = collisions
+#     else:
+#         raise NotImplementedError
+#     return out
 
 
 def mae_with_time_mask(p, q, mask, reduction=None):

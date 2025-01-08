@@ -36,6 +36,7 @@ class Agent(object):
         self.dg: float
         self.prev_dg:float
         self.hf: float
+        self.min_dist: float
 
         #TODO deal with different shape
         self.collider = None 

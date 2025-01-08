@@ -115,7 +115,6 @@ class Lagrange:
         pid_d = max(0., self._cost_d - self.cost_ds[0])
         pid_o = (self.pid_Kp * self._delta_p + self.pid_i +
             self.pid_Kd * pid_d)
-        
         self._lagrangian_multiplier = max(self.lagrangian_lower_bound, pid_o)
         self._lagrangian_multiplier = min(self._lagrangian_multiplier, self.lagrangian_upper_bound)
 

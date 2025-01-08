@@ -4,9 +4,11 @@
 **/results_seed_1/** 
 **/results_codeVer_1_seed_1/**
 **/room256_results_ver_1_seed_1/** 
+**/results_ver_*_seed_1/** 
 **/results_vis_aware/** 
 **/result_figures/**
 **/results_text/**  
+**/sim2real/** 
 .VSCodeCounter/
 
 ##### Python.gitignore #####
