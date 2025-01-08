@@ -135,10 +135,10 @@ def convert_json(obj):
         return str(obj)
 
 
-def save_config(args, algo_args, env_args, run_dir):
+def save_config(args, algo_args, env_args, run_dir,name=None):
     """Save the configuration of the program."""
     config = {"main_args": args, "algo_args": algo_args, "env_args": env_args}
     config_json = convert_json(config)
     output = json.dumps(config_json, separators=(",", ":\t"), indent=4, sort_keys=True)
-    with open(os.path.join(run_dir, "config.json"), "w", encoding="utf-8") as out:
+    with open(os.path.join(run_dir, "config.json" if name is None else name), "w", encoding="utf-8") as out:
         out.write(output)

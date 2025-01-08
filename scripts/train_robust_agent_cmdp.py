@@ -100,9 +100,9 @@ def main():
     print(args["base_model_dir"])
 
     # start training
-    from harl.runners.on_policy_cmdp_runner import OnPolicyCMDPRunner
+    from harl.runners.crowd_sim_cmdp_runner import CrowdSimCMDPRunner
 
-    runner = OnPolicyCMDPRunner(args, algo_args, env_args,base_model_algo_args)
+    runner = CrowdSimCMDPRunner(args, algo_args, env_args,base_model_algo_args)
     runner.run()
     runner.close()
 

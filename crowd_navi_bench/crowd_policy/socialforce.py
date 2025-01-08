@@ -67,7 +67,7 @@ class SocialForce():
                                     delta_t=self.time_step, 
                                     initial_speed=self.initial_speed,
                                     v0=self.v0, sigma=self.sigma,
-                                    ped_space=socialforcelib.PedSpacePotential(self.static_obstacle))
+                                    ped_space=socialforcelib.PedSpacePotential(self.static_obstacle,u0=5,r=0.2))
         sim.step()
         
         #clip according to preferred speed

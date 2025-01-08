@@ -31,8 +31,8 @@ class ViolateSpeedLimit(object):
         return 'violating speed limit'
 
 class ReachGoal(object):
-    def __init__(self):
-        pass
+    def __init__(self,time):
+        self.time=time
 
     def __str__(self):
         return 'Reaching goal'

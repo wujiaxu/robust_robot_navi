@@ -8,9 +8,9 @@ from harl.common.valuenorm import ValueNorm
 from harl.common.buffers.on_policy_actor_buffer import OnPolicyActorBuffer
 from harl.common.buffers.on_policy_critic_buffer_ep import OnPolicyCriticBufferEP
 from harl.common.buffers.on_policy_critic_buffer_fp import OnPolicyCriticBufferFP
-from harl.common.buffers.on_policy_critic_buffer_dis import OnPolicyCriticBufferDIS
+# from harl.common.buffers.on_policy_critic_buffer_dis import OnPolicyCriticBufferDIS
 from harl.algorithms.actors import ALGO_REGISTRY
-from harl.algorithms.critics.v_critic import DecVCritic
+from harl.algorithms.critics.v_critic import VCritic
 from harl.utils.trans_tools import _t2n
 from harl.utils.envs_tools import (
     make_eval_env,
@@ -117,7 +117,7 @@ class OnPolicyAiCrowdRunner:
         human_policy_actor_state_dict = torch.load(
             str(human_model_algo_args["train"]["model_dir"])
             + "/models"
-            + "/actor_agent1"
+            + "/actor_agent0"
             + ".pt"
         )
         human_agent.actor.load_state_dict(human_policy_actor_state_dict)
@@ -129,15 +129,15 @@ class OnPolicyAiCrowdRunner:
             self.actor_buffer = []
             for agent_id in range(self.num_agents):
                 ac_bu = OnPolicyActorBuffer(
-                    {**algo_args["train"], **algo_args["model"]},
+                    {**algo_args["train"], **algo_args["model"],**algo_args["algo"]},
                     self.envs.observation_space[agent_id],
                     self.envs.action_space[agent_id],
                 )
                 self.actor_buffer.append(ac_bu)
 
-            self.critic = DecVCritic(
+            self.critic = VCritic(
                 {**algo_args["model"], **algo_args["algo"]},
-                self.envs.observation_space[0],
+                centralized=False,
                 device=self.device,
             )
     

@@ -96,6 +96,9 @@ def make_train_env(env_name, seed, n_threads, env_args,human_policy_class=None):
             elif env_name == "crowd_env":
                 from harl.envs.robot_crowd_sim.crowd_env import RobotCrowdSim
                 env = RobotCrowdSim(env_args,phase="train",nenv=n_threads)
+            elif env_name == "crowd_env_ccp":
+                from harl.envs.robot_crowd_sim.crowd_env_ccp import RobotCrowdSimCCP
+                env = RobotCrowdSimCCP(env_args,phase="train",nenv=n_threads)
             elif env_name == "crowd_env_vis":
                 from harl.envs.robot_crowd_sim.crowd_env_vis import RobotCrowdSimVis
                 env = RobotCrowdSimVis(env_args,phase="train",nenv=n_threads)
@@ -162,6 +165,9 @@ def make_eval_env(env_name, seed, n_threads, env_args,human_policy_class=None):
             elif env_name == "crowd_env":
                 from harl.envs.robot_crowd_sim.crowd_env import RobotCrowdSim
                 env = RobotCrowdSim(env_args,phase="val",nenv=n_threads)
+            elif env_name == "crowd_env_ccp":
+                from harl.envs.robot_crowd_sim.crowd_env_ccp import RobotCrowdSimCCP
+                env = RobotCrowdSimCCP(env_args,phase="val",nenv=n_threads)
             elif env_name == "crowd_env_vis":
                 from harl.envs.robot_crowd_sim.crowd_env_vis import RobotCrowdSimVis
                 env = RobotCrowdSimVis(env_args,phase="val",nenv=n_threads,vis_scan=True)
@@ -248,6 +254,9 @@ def make_render_env(env_name, seed, env_args):
     elif env_name == "crowd_env":
         from harl.envs.robot_crowd_sim.crowd_env import RobotCrowdSim
         env = RobotCrowdSim(env_args,phase="test",nenv=1)
+    elif env_name == "crowd_env_ccp":
+        from harl.envs.robot_crowd_sim.crowd_env_ccp import RobotCrowdSimCCP
+        env = RobotCrowdSimCCP(env_args,phase="test",nenv=1)
     elif env_name == "crowd_env_vis":
         from harl.envs.robot_crowd_sim.crowd_env_vis import RobotCrowdSimVis
         env = RobotCrowdSimVis(env_args,phase="test",nenv=1)

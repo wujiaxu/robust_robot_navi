@@ -54,4 +54,7 @@ class BehaviorDiscriminator(nn.Module):
         discrim_features = self.base(input_discrim)
         pred_logits = self.pred_logits(discrim_features)
         loss = F.cross_entropy(pred_logits, behav_ids,reduction="none") 
+        # if torch.any(loss>0):
+        #     print(pred_logits)
+        #     raise ValueError
         return loss if active_mask is None else loss*active_mask

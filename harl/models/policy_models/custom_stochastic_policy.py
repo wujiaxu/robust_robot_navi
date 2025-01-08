@@ -1,52 +1,31 @@
 import torch
 import torch.nn as nn
 from harl.utils.envs_tools import check
-from harl.models.base.custom import ScanEncoder,StateEncoder
+# from harl.models.base.custom import ScanEncoder,StateEncoder
 from harl.models.base.rnn import RNNLayer
 from harl.models.base.act import ACTLayer
+from harl.models.base.robot_crowd_base import RobotCrowdBase,VisRobotBase,MLPCrowdBase
 from harl.utils.envs_tools import get_shape_from_obs_space
 
-class RobotBase(nn.Module):
+# class RobotBase(nn.Module):
 
-    def __init__(self,args,action_space):
-        super(RobotBase,self).__init__()
+#     def __init__(self,args,action_space):
+#         super(RobotBase,self).__init__()
 
-        self.robot_scan_shape = 720
-        self.robot_state_shape = 6
+#         self.robot_scan_shape = 720
+#         self.robot_state_shape = 6
 
-        self.scan_encoder=ScanEncoder(self.robot_scan_shape,args)
-        self.state_encoder=StateEncoder(self.scan_encoder.repr_dim+self.robot_state_shape,args)
-        self.repr_dim = self.state_encoder.repr_dim
+#         self.scan_encoder=ScanEncoder(self.robot_scan_shape,args)
+#         self.state_encoder=StateEncoder(self.scan_encoder.repr_dim+self.robot_state_shape,args)
+#         self.repr_dim = self.state_encoder.repr_dim
 
-    def forward(self, x):
+#     def forward(self, x):
         
-        robot_state = x[...,:self.robot_state_shape]
-        robot_scan = x[...,self.robot_state_shape:self.robot_state_shape+self.robot_scan_shape]
-        h = self.state_encoder(torch.cat([robot_state,self.scan_encoder(robot_scan)], dim=-1))
+#         robot_state = x[...,:self.robot_state_shape]
+#         robot_scan = x[...,self.robot_state_shape:self.robot_state_shape+self.robot_scan_shape]
+#         h = self.state_encoder(torch.cat([robot_state,self.scan_encoder(robot_scan)], dim=-1))
 
-        return h
-    
-class VisRobotBase(nn.Module):
-
-    def __init__(self,args,action_space):
-        super(VisRobotBase,self).__init__()
-
-        self.robot_scan_shape = 720
-        self.robot_state_shape = 6
-        self.input_channel = 2
-
-        self.scan_encoder=ScanEncoder(self.robot_scan_shape,args,input_channel=self.input_channel)
-        self.state_encoder=StateEncoder(self.scan_encoder.repr_dim+self.robot_state_shape,args)
-        self.repr_dim = self.state_encoder.repr_dim
-
-    def forward(self, x):
-        
-        robot_state = x[...,:self.robot_state_shape]
-        robot_scan = x[...,self.robot_state_shape:self.robot_state_shape
-                           +self.robot_scan_shape*self.input_channel]#.view(-1,self.input_channel,self.robot_scan_shape)
-        h = self.state_encoder(torch.cat([robot_state,self.scan_encoder(robot_scan)], dim=-1))
-
-        return h
+#         return h
 
 class CustomStochasticPolicy(nn.Module):
     """Stochastic policy model. Outputs actions given observations."""
@@ -72,14 +51,21 @@ class CustomStochasticPolicy(nn.Module):
 
         self.use_discriminator = args["use_discriminator"]
         self.human_preference_dim = args["human_preference_vector_dim"]
+        # print(self.human_preference_dim)
 
         self.use_vis_aware = args.get("use_vis_aware",False)
-        obs_shape = get_shape_from_obs_space(obs_space)
         if not self.use_vis_aware:
-            base = RobotBase
+            base_model_name = args.get("base_model_name","CNN_1D")
+            if base_model_name == "CNN_1D":
+                base = RobotCrowdBase
+            elif base_model_name == "MLP" or base_model_name == "EGCL":
+                base = MLPCrowdBase
+            else:
+                raise NotImplementedError
         else:
             base = VisRobotBase
-        self.base = base(args, action_space)
+        args["use_discriminator"] = False #actor use late fusion
+        self.base = base(args, centralized=False)
 
         # if self.use_naive_recurrent_policy or self.use_recurrent_policy:
         self.rnn = RNNLayer(

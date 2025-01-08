@@ -29,8 +29,16 @@ class OnPolicyCriticBufferFP:
 
         share_obs_shape = get_shape_from_obs_space(share_obs_space)
 
+        self.down_sample_lidar_scan_bin = args.get("down_sample_lidar_scan_bin",720)
+        self.human_preference_dim = args["human_preference_vector_dim"]
+        self.num_agents = num_agents
+
         if isinstance(share_obs_shape[-1], list):
             share_obs_shape = share_obs_shape[:1]
+        if self.down_sample_lidar_scan_bin != 720:
+            share_obs_dim = share_obs_shape[-1]
+            share_obs_dim -= num_agents*(720-self.down_sample_lidar_scan_bin)
+            share_obs_shape = share_obs_shape[:-1]+(share_obs_dim,)
 
         # Buffer for share observations
         self.share_obs = np.zeros(
@@ -82,9 +90,11 @@ class OnPolicyCriticBufferFP:
         self.step = 0
 
     def insert(
-        self, share_obs, rnn_states_critic, value_preds, rewards, masks, bad_masks
+        self, share_obs, rnn_states_critic, 
+        value_preds, rewards, masks, bad_masks
     ):
         """Insert data into buffer."""
+        share_obs = self.human_feature_extractor(share_obs)
         self.share_obs[self.step + 1] = share_obs.copy()
         self.rnn_states_critic[self.step + 1] = rnn_states_critic.copy()
         self.value_preds[self.step] = value_preds.copy()
@@ -93,6 +103,18 @@ class OnPolicyCriticBufferFP:
         self.bad_masks[self.step + 1] = bad_masks.copy()
 
         self.step = (self.step + 1) % self.episode_length
+
+    def human_feature_extractor(self,share_obs):
+        if self.down_sample_lidar_scan_bin == 720: return share_obs
+        obs = share_obs[...,:-self.num_agents*2].reshape( self.n_rollout_threads,self.num_agents,self.num_agents,726+self.human_preference_dim)
+        state = obs[...,:6]
+        scan = obs[...,6:726]
+        indices = np.linspace(0, 720 - 1, self.down_sample_lidar_scan_bin, dtype=int)
+        down_sampled_scan = scan[...,indices]
+        pref = obs[...,726:]
+        new_obs = np.concatenate([state,down_sampled_scan,pref],axis=-1).reshape(self.n_rollout_threads,self.num_agents,-1)
+        new_obs = np.concatenate([new_obs,share_obs[...,-self.num_agents*2:]],axis=-1)
+        return new_obs
 
     def after_update(self):
         """After an update, copy the data at the last step to the first position of the buffer."""

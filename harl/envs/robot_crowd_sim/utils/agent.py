@@ -35,6 +35,8 @@ class Agent(object):
         self.agent_type = agent_type
         self.dg: float
         self.prev_dg:float
+        self.hf: float
+        self.min_dist: float
 
         #TODO deal with different shape
         self.collider = None 
@@ -63,6 +65,13 @@ class Agent(object):
         self.theta = theta
         self.w = w
         self.dg = np.linalg.norm((gx-px,gy-py))
+        dxy = np.array(self.get_goal_position())-np.array(self.get_position())
+        goal_direction = np.arctan2(dxy[1],dxy[0])
+        hf = (self.theta-goal_direction)% (2 * np.pi)
+        if hf > np.pi:
+            hf -= 2 * np.pi
+        self.hf = hf
+
         if radius is not None:
             self.radius = radius
         if v_pref is not None:
@@ -172,6 +181,14 @@ class Agent(object):
                 self.vy = action.v * np.sin(self.theta)
         self.collider = Point(self.px, self.py).buffer(self.radius)
         self.dg = np.linalg.norm((self.gx-self.px,self.gy-self.py))
+
+        dxy = np.array(self.get_goal_position())-np.array(self.get_position())
+        goal_direction = np.arctan2(dxy[1],dxy[0])
+        hf = (self.theta-goal_direction)% (2 * np.pi)
+        if hf > np.pi:
+            hf -= 2 * np.pi
+        self.hf = hf
+
         
     def reached_destination(self):
         return norm(np.array(self.get_position()) - np.array(self.get_goal_position())) < self.radius

@@ -72,7 +72,7 @@
             "log_interval":	5,
             "model_dir":	null,
             "n_rollout_threads":	32,
-            "num_env_steps":	4000000,
+            "num_env_steps":	8000000,
             "use_linear_lr_decay":	true,
             "use_proper_time_limits":	true,
             "use_valuenorm":	true

@@ -99,6 +99,9 @@ class OnPolicyTestRunner:
         if self.args["human_policy"] == "SFM":
             from crowd_navi_bench.crowd_policy.socialforce import SocialForce
             self.human_policy = SocialForce(self.envs,self.args["sfm_v0"],self.args["sfm_sigma"])
+        elif self.args["human_policy"] == "ORCA":
+            from crowd_navi_bench.crowd_policy.orca import ORCA
+            self.human_policy = ORCA(self.envs)
         else:
             raise NotImplementedError
 

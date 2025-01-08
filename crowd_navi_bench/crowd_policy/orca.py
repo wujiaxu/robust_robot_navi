@@ -111,13 +111,13 @@ class ORCA():
         self.time_horizon = 5
         self.time_horizon_obst = 5
         self.radius = 0.3
-        self.max_speed = 1
+        self.max_speed = 0.5#1
         self.time_step = 0.25
         self.sim = None
         self.env = env
         x,y = self.env._map.getBoundary()
         self.static_obstacle = [[(x[i],y[i]),(x[i+1],y[i+1])] for i in range(len(x)-1)]
-        print(self.static_obstacle)
+        # print(self.static_obstacle)
         # self.static_obstacle = []
         # for polygon in obstacles:
         #     #polygon: a loop of a list of vertices 
@@ -143,6 +143,7 @@ class ORCA():
         :return:
         """
         agents = self.env.agents
+        self.max_neighbors = len(self.env.agents)-1
         other_states = []
         # (self_state_px, self_state_py,
         #  self_state_vx, self_state_vy,
@@ -194,10 +195,10 @@ class ORCA():
         for obst in self.static_obstacle:
             self.sim.addObstacle(obst) 
         self.sim.processObstacles() #TODO
-        self.sim.addAgent((self_state[0],self_state[1]), *params, self_state[4] + 0.01 + self.safety_space,
+        self.sim.addAgent((self_state[0],self_state[1]), *params, self_state[4],
                             self_state[7], (self_state[2],self_state[3]))
         for other_state in other_states:
-            self.sim.addAgent((other_state[0],other_state[1]), *params, other_state[4] + 0.01 + self.safety_space,
+            self.sim.addAgent((other_state[0],other_state[1]), *params, other_state[4],
                                 self.max_speed, (other_state[2],other_state[3]))
         # else:
         #     self.sim.setAgentPosition(0, robot_state.position)

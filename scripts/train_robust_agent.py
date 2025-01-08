@@ -21,6 +21,7 @@ def main():
         default="crowd_env",
         choices=[
             "crowd_env",
+            "crowd_env_ccp",
             "crowd_env_vis"
         ],
         help="Environment name. Choose from: crowd_sim",
@@ -59,9 +60,9 @@ def main():
     update_args(unparsed_dict, algo_args, env_args)  # update args from command line
 
     # start training
-    from harl.runners import RUNNER_REGISTRY
+    from harl.runners.crowd_sim_base_runner import CrowdSimBaseRunner
 
-    runner = RUNNER_REGISTRY[args["algo"]](args, algo_args, env_args)
+    runner = CrowdSimBaseRunner(args, algo_args, env_args)
     runner.run()
     runner.close()
 

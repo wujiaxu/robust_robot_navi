@@ -4,11 +4,11 @@
 #!/bin/bash
 
 # Define the root directory
-root_dir="/home/dl/wu_ws/HARL/crowd_navi_bench/results/crowd_env/crowd_navi/robot_crowd_happo"
+root_dir="/home/dl/wu_ws/robust_robot_navi/crowd_navi_bench/results/crowd_env/crowd_navi/robot_crowd_happo"
 
 # Define subpaths for each model directory
 model_subdirs=(
-    "train_on_sfm_crowd/seed-00001-2024-09-28-20-00-11"
+    # "train_on_sfm_crowd/seed-00001-2024-09-28-20-00-11"
     # "train_on_sfm_crowd_room361/seed-00001-2024-09-25-02-46-00" #room361
     # "train_on_ai_4p_sp_rvs_room361/seed-00001-2024-09-28-20-00-00"
     # "train_on_ai_090_4p_6c_rvs_room361/seed-00001-2024-09-28-19-59-06"
@@ -24,12 +24,13 @@ model_subdirs=(
     # "train_on_ai_090_4p_6c_rvs_circlecross"
     # "train_on_ai_4p_sp_rvs_circlecross"
     # "train_on_sfm_crowd"
-    # "train_on_ai_090_4p_3c_rvs_room361"
-    # "train_on_ai_4p_sp_rvs_room361"
-    # "train_on_sfm_crowd_room361" 
+    "train_on_ai_090_4p_3c_rvs_room361"
+    "train_on_ai_4p_sp_rvs_room361"
+    "train_on_sfm_crowd_room361" 
+    # "train_on_ai_4p_12c_rvs_room361"
 )
 
-human_num=5
+human_num=4
 seed=1
 #5
 
@@ -63,13 +64,14 @@ run_test() {
     #     --sfm_sigma 0.3 \
     #     --human_num "$human_num"
     
-    python test_runner/ad_hoc_crowd_model_test_runner.py \
-        --exp_name "${exp_name}_vs_sfm_5_1point5_cc_${human_num}p" \
-        --model_dir "$model_dir" \
-        --scenario circle_cross \
-        --sfm_v0 5 \
-        --sfm_sigma 1.5 \
-        --human_num "$human_num"
+    # python test_runner/ad_hoc_crowd_model_test_runner.py \
+    #     --exp_name "${exp_name}_vs_sfm_5_1point5_cc_${human_num}p" \
+    #     --model_dir "$model_dir" \
+    #     --scenario circle_cross \
+    #     --sfm_v0 5 \
+    #     --sfm_sigma 1.5 \
+    #     --human_num "$human_num"
+
     # python test_runner/ai_crowd_model_test_runner.py\
     #     --seed $seed \
     #     --exp_name "${exp_name}_vs_c090_happo_5p_3c_rvs_circlecross" \
@@ -84,7 +86,7 @@ run_test() {
     #     --scenario circle_cross \
     #     --model_dir "$model_dir" \
     #     --human_num "$human_num" \
-    #     --human_model_dir /home/dl/wu_ws/HARL/results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/happo_5p_sp_rvs_circlecross 
+    #     --human_model_dir /home/dl/wu_ws/robust_robot_navi/results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/happo_5p_sp_rvs_circlecross 
 
     # python test_runner/ai_crowd_model_test_runner.py\
     #     --seed $seed \
@@ -92,15 +94,26 @@ run_test() {
     #     --scenario room_361 \
     #     --model_dir "$model_dir" \
     #     --human_num "$human_num" \
-    #     --human_model_dir /home/dl/wu_ws/HARL/results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_5p_3c_rvs_room361
+    #     --human_model_dir /home/dl/wu_ws/robust_robot_navi/results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_5p_3c_rvs_room361
 
-    # python test_runner/ai_crowd_model_test_runner.py\
+    python test_runner/ai_crowd_model_test_runner.py\
+        --seed $seed \
+        --exp_name "${exp_name}_vs_happo_5p_sp_rvs_room361" \
+        --scenario room_361 \
+        --model_dir "$model_dir" \
+        --human_num "$human_num" \
+        --human_model_dir /home/dl/wu_ws/robust_robot_navi/results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/happo_5p_sp_rvs_room361 
+
+    # python test_runner/ai_crowd_model_sim2real_test_runner.py\
+    #     --log_dir "sim2real" \
     #     --seed $seed \
-    #     --exp_name "${exp_name}_vs_happo_5p_sp_rvs_room361" \
+    #     --exp_name "${exp_name}_vs_c090_happo_5p_3c_rvs_room361" \
     #     --scenario room_361 \
+    #     --test_episode 20 \
     #     --model_dir "$model_dir" \
-    #     --human_num "$human_num" \
-    #     --human_model_dir /home/dl/wu_ws/HARL/results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/happo_5p_sp_rvs_room361 
+    #     --human_num 2 \
+    #     --human_model_dir /home/dl/wu_ws/robust_robot_navi/results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_5p_3c_rvs_room361
+
 }
 
 # Loop through the model directories

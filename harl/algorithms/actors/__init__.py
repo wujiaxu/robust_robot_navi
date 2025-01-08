@@ -10,6 +10,7 @@ from harl.algorithms.actors.maddpg import MADDPG
 from harl.algorithms.actors.matd3 import MATD3
 from harl.algorithms.actors.mappo import MAPPO
 from harl.algorithms.actors.robot_crowd_happo import RobotCrowdHAPPO
+from harl.algorithms.actors.robot_crowd_ppo import RobotCrowdPPO
 
 ALGO_REGISTRY = {
     "happo": HAPPO,
@@ -23,4 +24,5 @@ ALGO_REGISTRY = {
     "matd3": MATD3,
     "mappo": MAPPO,
     "robot_crowd_happo":RobotCrowdHAPPO,
+    "robot_crowd_ppo": RobotCrowdPPO,
 }

@@ -1,3 +1,4 @@
+from pdb import run
 from harl.envs.robot_crowd_sim.utils.info import *
 import numpy as np
 from collections import deque
@@ -32,7 +33,9 @@ class InfoMonitor:
 
         self.crowd_step = {}
         for id in range(self.human_num):
-            self.crowd_step[id] = [0]*self._nenv
+            self.crowd_step[id] = []# [0]*self._nenv
+            for env_id in range(self._nenv):
+                self.crowd_step[id].append(0)
             
         self.crowd_episode = 0
         self.crowd_success = deque(maxlen=self._buffer_len)
@@ -125,7 +128,7 @@ class InfoMonitor:
             return
         self._robotNewEpisode()
         if isinstance(info,ReachGoal):
-            self.robot_time.append(self.robot_step[robot_id][env_id])
+            self.robot_time.append(info.time)
             self.robot_success[-1]+=1
         elif isinstance(info,Collision):
             self.robot_collide[-1]+=1
@@ -137,7 +140,8 @@ class InfoMonitor:
         return
     
     def _readCrowdInfo(self,info,human_id,env_id):
-        self.crowd_step[human_id][env_id] += 0.25
+        
+        self.crowd_step[human_id][env_id] += self._time_step
         if isinstance(info,Discomfort):
             self.crowd_invasion.append(1)
             return
@@ -146,7 +150,11 @@ class InfoMonitor:
             return
         self._crowdNewEpisode()
         if isinstance(info,ReachGoal):
-            self.crowd_time.append(self.crowd_step[human_id][env_id])
+            if info.time>self._max_episode_len*self._time_step:
+                print(self.crowd_step[human_id][env_id])
+                print(info)
+                raise RuntimeError
+            self.crowd_time.append(info.time)
             self.crowd_success[-1]+=1
         elif isinstance(info,Collision):
             self.crowd_collide[-1]+=1
