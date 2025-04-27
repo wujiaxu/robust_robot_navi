@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="training_diagram_2.png" width="300px" height="auto"/>
+  <img src="training_diagram_2.png" width="600px" height="auto"/>
 </div>
 
 <h1 align="center"> Diversity-aware Crowd Model for Robust Robot Navigation in Human Populated Environment</h1>
@@ -99,6 +99,16 @@ bash script/train_select.sh
 
 Our implementation is based on:
 [Peking University](https://www.pku.edu.cn//) and [BIGAI](https://www.bigai.ai/). If you find our paper or this repository helpful in your research or project, please consider citing our works using the following BibTeX citation:
+
+```tex
+@article{crowdmodel2025wujiaxu,
+  author  = {Jiaxu Wu, Yusheng Wang, Tong Chen, Jun Jiang, Yongdong Wang, Qi An and Atsushi Yamashita},
+  title   = {Diversity-aware Crowd Model for Robust Robot Navigation in Human Populated Environment},
+  journal = {IEEE Robotics and Automation Letters},
+  year    = {2025},
+  volume  = {10},
+}
+```
 
 ```tex
 @article{JMLR:v25:23-0488,
