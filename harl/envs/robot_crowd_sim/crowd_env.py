@@ -22,6 +22,7 @@ class RobotCrowdSim:
                  phase:str,
                  nenv:int=1,
                  thisSeed:int=0,
+                 time_step:float = 0.25
                  ) -> None:
         
         # setup env
@@ -31,7 +32,12 @@ class RobotCrowdSim:
         self.human_policy = args.get("human_policy","ai")
         self.human_random_pref_v_and_size = args.get("human_random_pref_v_and_size",False)
         self.robot_random_pref_v_and_size = args.get("robot_random_pref_v_and_size",False)
+        print("random robot pref_v and size: ",self.robot_random_pref_v_and_size)
+        print("random human pref_v and size: ",self.human_random_pref_v_and_size)
         self.use_static_human = args.get("use_static_human",False)
+        self.dynamic_spwan = args.get("dynamic_spawn",False)
+        print("use static human:",self.use_static_human)
+        print("use dynamic_spwan:",self.dynamic_spwan)
         self.state_type = args["state_type"]
         self.args = copy.deepcopy(args)
         # map setup
@@ -51,7 +57,7 @@ class RobotCrowdSim:
             self._map = Map(8,8)
         else:
             raise NotImplementedError
-        self._time_step = 0.25
+        self._time_step = time_step
         # setup agents (robot and crowd)
         self._human_num = self.args["human_num"]
         self._robot_num = self.args["robot_num"]
@@ -166,11 +172,22 @@ class RobotCrowdSim:
         self.thisSeed = seed
         return 
     
+    def set_agent_preference(self,preference):
+        for i, agent_id in enumerate(self.humans):
+            self._crowd_preference[agent_id] = self._initHumanPreferenceVector(preference[i])
+
+        return
     def set_agent_size(self,agent_id,r):
         self.agents[agent_id].radius = r
     
     def set_agent_v_pref(self,agent_id,v_pref):
         self.agents[agent_id].v_pref = v_pref
+
+    def set_static_human(self,agent_id,px=0.,py=0.):
+
+        agent = self.agents[agent_id]
+        agent.set(px, py, px, py, 0,0, 0)
+        agent.task_done = True
 
     def record_current_log_prob(self,agent_id,log_prob):
         self.agent_log_probs[agent_id] = log_prob
@@ -270,7 +287,7 @@ class RobotCrowdSim:
             else:
                 for agent in self.agents:
                     if self.active_agent[agent.id]:
-                        self._spawner.spawnAgent(agent)
+                        self._spawner.spawnAgent(agent,self.dynamic_spwan)
                         agent.task_done = False
                     else:
                         agent.set(999, 999, 999, 999, 0,0, 0)
@@ -450,6 +467,16 @@ class RobotCrowdSim:
                     random_index = preference
                 # Create a one-hot vector
                 task[random_index] = 1
+            elif self._human_preference_type == "ccp":
+                assert self._human_preference_vector_dim == 2
+                self.wca_max = 3.5/1.25
+                self.wca_min = (0.5+3.5)/2.5
+                self.wg_max = 1.8
+                self.wg_min = 0.1
+                self.goal_weight = np.random.uniform(self.wg_min,self.wg_max)
+                self.collision_weight = np.random.uniform(self.wca_min,self.wca_max)
+                task = np.array([(self.goal_weight-self.wg_min)/(self.wg_max-self.wg_min),
+                                    (self.collision_weight-self.wca_min)/(self.wca_max-self.wca_min)])
             else:
                 raise NotImplementedError
                 task = np.random.randn(self._human_preference_vector_dim)

@@ -75,24 +75,28 @@ def process_method(files):
             all_num_reachgoal.append(num_reachgoal)
     
     data = {"ADE20":all_k_ades,"FDE20":all_k_fdes,"wd":all_wds,"nn-dist":all_nn_dists,"num_collision":all_num_collision,"num_reachgoal":all_num_reachgoal}
-    
     print("ADE20",np.mean(all_k_ades),np.std(all_k_ades))
     print("FDE20",np.mean(all_k_fdes),np.std(all_k_fdes))
     return data
 
-def process_scene(proposed,ccp,pt,scene_name,rw_wds,rw_mds):
+def process_scene(proposed,proposed_3c,ccp,pt,scene_name,rw_wds,rw_mds):
     real_world_data = {"wd":rw_wds,"nn-dist":rw_mds}
     result_proposed= process_method(proposed)
+    result_proposed_3c= process_method(proposed_3c)
     result_ccp= process_method(ccp)
     result_pt= process_method(pt)
     # print(len(result_pt["nn-dist"]),len(result_ccp["nn-dist"]))
     datasets = [result_proposed, 
+                result_proposed_3c,
                 result_ccp,
-                result_pt,
+                # result_pt,
                 ]
     for dataset in datasets:
         print("collision:",sum(dataset["num_collision"]))
-    dataset_names = ["Proposed", "CCP","PT-ORCA"]
+    dataset_names = ["Proposed(6c)","Proposed(3c)", 
+                     "CCP",
+                    #  "PT-ORCA"
+                     ]
     list_names = ['ADE20', 'FDE20', 'wd', 'nn-dist']
     # Combine data for boxplots and histograms
     boxplot_data1 = [d['ADE20'] for d in datasets]
@@ -134,25 +138,25 @@ def process_scene(proposed,ccp,pt,scene_name,rw_wds,rw_mds):
     
     fontsize = 20
     # Plotting Boxplots and Saving Figures
-    for list_name in list_names[:2]:
-        # Collect data for the current list from all datasets
-        list_data = [d[list_name] for d in datasets]
+    # for list_name in list_names[:2]:
+    #     # Collect data for the current list from all datasets
+    #     list_data = [d[list_name] for d in datasets]
 
-        # Boxplot
-        fig_box = plt.figure(figsize=(5, 5))
-        plt.boxplot(list_data, labels=dataset_names)
-        plt.title(f"Boxplot for {list_name}",fontsize=fontsize)
-        plt.ylabel("Erros [m]",fontsize=15)
-        plt.xticks(fontsize=fontsize)  # Larger font for x-axis ticks
-        plt.yticks(fontsize=15) 
-        plt.tight_layout()
-        fig_box.savefig(f"results_figure/mocap_ped_sim_evaluation_{scene_name}_{list_name}_boxplot.png")
-        with PdfPages(f"results_figure/mocap_ped_sim_evaluation_{scene_name}_{list_name}_boxplot.pdf") as pdf:
-            pdf.savefig(fig_box, bbox_inches='tight')
-        plt.close(fig_box)  # Close the figure after saving
+    #     # Boxplot
+    #     fig_box = plt.figure(figsize=(5, 5))
+    #     plt.boxplot(list_data, labels=dataset_names)
+    #     plt.title(f"Boxplot for {list_name}",fontsize=fontsize)
+    #     plt.ylabel("Erros [m]",fontsize=15)
+    #     plt.xticks(fontsize=fontsize)  # Larger font for x-axis ticks
+    #     plt.yticks(fontsize=15) 
+    #     plt.tight_layout()
+    #     fig_box.savefig(f"results_figure/mocap_ped_sim_evaluation_{scene_name}_{list_name}_boxplot.png")
+    #     with PdfPages(f"results_figure/mocap_ped_sim_evaluation_{scene_name}_{list_name}_boxplot.pdf") as pdf:
+    #         pdf.savefig(fig_box, bbox_inches='tight')
+    #     plt.close(fig_box)  # Close the figure after saving
 
     data_ranges = {"wd":(-6.2,6.2),"nn-dist":(0.2,3.5)}
-    dataset_names = ["Real world","Proposed", "CCP","PT-ORCA"]
+    dataset_names = ["Real world","Proposed(6c)","Proposed(3c)", "CCP","PT-ORCA"]
     for list_name in list_names[2:]:
         # Collect data for the current list from all datasets
         list_data = [real_world_data[list_name]]+[d[list_name] for d in datasets]
@@ -169,28 +173,40 @@ def process_scene(proposed,ccp,pt,scene_name,rw_wds,rw_mds):
         plt.xticks(fontsize=15)  # Larger font for x-axis ticks
         plt.yticks(fontsize=15) 
         plt.tight_layout()
-        fig_hist.savefig(f"results_figure/mocap_ped_sim_evaluation_{scene_name}_{list_name}_histogram.png")
-        with PdfPages(f"results_figure/mocap_ped_sim_evaluation_{scene_name}_{list_name}_histogram.pdf") as pdf:
+        fig_hist.savefig(f"results_figure/new_mocap_ped_sim_evaluation_{scene_name}_{list_name}_histogram.png")
+        with PdfPages(f"results_figure/new_mocap_ped_sim_evaluation_{scene_name}_{list_name}_histogram.pdf") as pdf:
             pdf.savefig(fig_hist, bbox_inches='tight')
         plt.close(fig_hist)  # Close the figure after saving
 
 if __name__ == "__main__":
     data_path_2p_sim_proposed = "ped_sim/crowd_env/crowd_navi/robot_crowd_happo/ai_crowdsim_2p_rvs_6c_room256/seed-00001-2024-12-14-23-07-48/logs/generated_data.npy"
     data_path_3p_sim_proposed = "ped_sim/crowd_env/crowd_navi/robot_crowd_happo/ai_crowdsim_3p_rvs_6c_room256/seed-00001-2024-12-14-23-07-53/logs/generated_data.npy"
+    data_path_2p_sim_proposed_3c = "ped_sim/crowd_env/crowd_navi/robot_crowd_happo/ai_crowdsim_2p_rvs_3c_room256/seed-00001-2025-03-20-02-32-06/logs/generated_data.npy"
+    data_path_3p_sim_proposed_3c = "ped_sim/crowd_env/crowd_navi/robot_crowd_happo/ai_crowdsim_3p_rvs_3c_room256/seed-00001-2025-03-20-01-54-46/logs/generated_data.npy"
+    
     data_path_2p_sim_ccp = "ped_sim/crowd_env_ccp/crowd_navi/robot_crowd_ppo/ai_crowdsim_2p_rvs_ccp_room256/seed-00001-2024-12-14-23-07-58/logs/generated_data.npy"
     data_path_3p_sim_ccp = "ped_sim/crowd_env_ccp/crowd_navi/robot_crowd_ppo/ai_crowdsim_3p_rvs_ccp_room256/seed-00001-2024-12-14-23-37-42/logs/generated_data.npy"
     data_path_2p_sim_pt = "ped_sim/crowd_env/crowd_navi/robot_crowd_happo/ad_hoc_crowdsim_2p_rvs_pt_room256/seed-00001-2024-12-14-23-08-08/logs/generated_data.npy"
     data_path_3p_sim_pt = "ped_sim/crowd_env/crowd_navi/robot_crowd_happo/ad_hoc_crowdsim_3p_rvs_pt_room256/seed-00001-2024-12-14-23-08-13/logs/generated_data.npy"
-    
+    data_path_2p_prl = "/home/dl/wu_ws/robust_robot_navi/crowd_navi_bench/ped_sim/crowd_env/crowd_navi/robot_crowd_happo/ai_crowdsim_2p_rvs_sp_room256/seed-00001-2025-02-26-16-16-25/logs/generated_data.npy"
+    data_path_3p_prl = "/home/dl/wu_ws/robust_robot_navi/crowd_navi_bench/ped_sim/crowd_env/crowd_navi/robot_crowd_happo/ai_crowdsim_3p_rvs_sp_room256/seed-00001-2025-02-26-16-16-30/logs/generated_data.npy"
+    data_path_2p_sfm = "/home/dl/wu_ws/robust_robot_navi/crowd_navi_bench/ped_sim/crowd_env/crowd_navi/robot_crowd_happo/ad_hoc_crowdsim_2p_rvs_sfm_room256/seed-00001-2025-02-26-15-42-18/logs/generated_data.npy"
+    data_path_3p_sfm = "/home/dl/wu_ws/robust_robot_navi/crowd_navi_bench/ped_sim/crowd_env/crowd_navi/robot_crowd_happo/ad_hoc_crowdsim_3p_rvs_sfm_room256/seed-00001-2025-02-26-15-42-23/logs/generated_data.npy"
+
+    result_prl = process_method([data_path_2p_prl,data_path_3p_prl])
+    result_sfm = process_method([data_path_2p_sfm,data_path_3p_sfm])
+    result_proposed_3c = process_method([data_path_2p_sim_proposed_3c,data_path_3p_sim_proposed_3c])
+
     wds_2p,wds_3p,min_dists_2p,min_dists_3p = process_real_world_data()
-    # process_scene(
-    #     [data_path_2p_sim_proposed],
-    #     [data_path_2p_sim_ccp],
-    #     [data_path_2p_sim_pt],
-    #     "2p",
-    #     wds_2p,
-    #     min_dists_2p
-    # )
+    process_scene(
+        [data_path_2p_sim_proposed],
+        [data_path_2p_sim_proposed_3c],
+        [data_path_2p_sim_ccp],
+        [data_path_2p_sim_pt],
+        "2p",
+        wds_2p,
+        min_dists_2p
+    )
     # process_scene(
     #     [data_path_3p_sim_proposed],
     #     [data_path_3p_sim_ccp],
@@ -199,12 +215,13 @@ if __name__ == "__main__":
     #     wds_3p,
     #     min_dists_3p
     # )
-    plt.rcParams.update({
-    "text.usetex": True,
-    "font.family": 'Times New Roman'
-    })
+    # plt.rcParams.update({
+    # "text.usetex": True,
+    # "font.family": 'Times New Roman'
+    # })
     process_scene(
         [data_path_2p_sim_proposed,data_path_3p_sim_proposed],
+        [data_path_2p_sim_proposed_3c,data_path_3p_sim_proposed_3c],
         [data_path_2p_sim_ccp,data_path_3p_sim_ccp],
         [data_path_2p_sim_pt,data_path_3p_sim_pt],
         "all",

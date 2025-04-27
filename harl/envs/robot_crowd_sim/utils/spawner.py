@@ -264,7 +264,7 @@ class CircleSpawner(Spawner):
         self._agents:List[Agent]=agents
         self._circle_size = circle_size
 
-    def spawnAgent(self, agent: Agent):
+    def spawnAgent(self, agent: Agent,dynamic_spwan:bool=False):
 
         counter = 2e7
         while True:
@@ -289,9 +289,16 @@ class CircleSpawner(Spawner):
                 break
             counter-=1
         # robot.start_pos.append((px, py))
-        theta = np.arctan2(-py,-px)
-        vx = agent.v_pref*np.cos(theta)
-        vy = agent.v_pref*np.sin(theta)
-        agent.set(px, py, -px, -py, 0,0, theta)
+        
+        if not dynamic_spwan:
+            theta = np.arctan2(-py,-px)
+            agent.set(px, py, -px, -py, 0,0, theta)
+        else:
+            v = np.random.random()*agent.v_pref
+            theta = np.random.random() * np.pi * 2
+            vx = v*np.cos(theta)
+            vy = v*np.sin(theta)
+            agent.set(px, py, -px, -py, vx,vy, theta)
+        
 
         return 

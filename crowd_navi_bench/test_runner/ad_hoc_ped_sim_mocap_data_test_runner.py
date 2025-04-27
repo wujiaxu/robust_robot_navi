@@ -24,6 +24,7 @@ from harl.envs import LOGGER_REGISTRY
 
 from harl.common.video import VideoRecorder
 from crowd_navi_bench.crowd_policy.orca import ORCA,PenType
+from crowd_navi_bench.crowd_policy.socialforce import SocialForce
 
 class OnPolicyTestRunner:
     """Base runner for on-policy algorithms."""
@@ -107,8 +108,12 @@ class OnPolicyTestRunner:
         # human_agent.actor.load_state_dict(human_policy_actor_state_dict)
         # for _ in range(self.env_args["human_num"]):
         #     self.actor.append(human_agent)
-        self.human_policy = ORCA(self.envs)
-
+        if self.args["human_policy"] == "ORCA":
+            self.human_policy = ORCA(self.envs)
+        elif self.args["human_policy"] == "SFM":
+            self.human_policy = SocialForce(self.envs,self.args["sfm_v0"],self.args["sfm_sigma"])
+        else:
+            raise NotImplementedError
 
         self.logger = LOGGER_REGISTRY[args["env"]](
                 args, algo_args, env_args, self.num_agents, self.writter, self.run_dir
@@ -193,7 +198,14 @@ class OnPolicyTestRunner:
                     while step<max(num_steps):
                         eval_actions_collector = []
                         for agent_id in range(self.num_agents):
-                            action = self.human_policy.predict(agent_id,h_types[agent_id])
+
+                            if self.args["human_policy"] == "ORCA":
+                                action = self.human_policy.predict(agent_id,h_types[agent_id])
+                            elif self.args["human_policy"] == "SFM":
+                                action = self.human_policy.predict(agent_id)
+                            else:
+                                raise NotImplementedError
+                            
                             eval_actions_collector.append(np.array(action))
                         eval_actions = np.array(eval_actions_collector)
                         
@@ -256,10 +268,10 @@ class OnPolicyTestRunner:
                             wds.append(wd)
                             nn_dists.append(nn_dist)
                     # save video 
-                    # self.video_recorder.save(
-                    #     "test_episode_{}_{}_{}.mp4".format(
-                    #     e,v,''.join(map(str, preference))),
-                    #     save_pdf=True)
+                    self.video_recorder.save(
+                        "test_episode_{}_{}_{}.mp4".format(
+                        e,v,''.join(map(str, preference))),
+                        save_pdf=True)
                 k_ades = np.min(ades,axis=0)
                 k_fdes = np.min(fdes,axis=0)
                 # print((k_ades,k_fdes,wds,nn_dists))
@@ -396,6 +408,12 @@ if __name__ == "__main__":
             "robot_crowd_happo"
         ],
         help="Algorithm name. Choose from: robot_crowd_happo.",
+    )
+    parser.add_argument(
+        "--sfm_v0", type=float, default=5, help="Experiment iteration."
+    )
+    parser.add_argument(
+        "--sfm_sigma", type=float, default=1.5, help="Experiment iteration."
     )
     parser.add_argument(
         "--env",

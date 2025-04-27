@@ -34,7 +34,9 @@ ppo_10p_3c_rvs_circlecross=ppo_10p_3c_rvs_circlecross
 ppo_4p_ccp_rvs_room256=ppo_4p_ccp_rvs_room256
 ppo_2p_ccp_rvs_room256=ppo_2p_ccp_rvs_room256
 ppo_3p_ccp_rvs_room256=ppo_3p_ccp_rvs_room256
-result_dir=room256_results_ver_"$version"_seed_"$seed"  
+
+# result_dir=room256_results_ver_"$version"_seed_"$seed"  
+result_dir=results_ver_2_seed_1
 
 # python scripts/train_robust_agent.py \
 #     --log_dir $result_dir \
@@ -44,36 +46,35 @@ result_dir=room256_results_ver_"$version"_seed_"$seed"
 #     --exp_name $ppo_5p_ccp_rvs_circlecross \
 #     --load_config tuned_configs/$ppo_5p_ccp_rvs_circlecross.json \
 #     --cuda_device cuda:0
+
+# python scripts/train_robust_agent.py \
+#     --log_dir $result_dir \
+#     --seed $seed \
+#     --algo robot_crowd_ppo \
+#     --env crowd_env_ccp \
+#     --exp_name ppo_CNN_1D_5-5_ccp_rvs_room361 \
+#     --load_config train_configs/ppo_CNN_1D_5-5_ccp_rvs_room361.json \
+#     --cuda_device cuda:1
+
 conda_env=url_navi
 declare -a sessions_and_scripts=(
-    # "ccp1: scripts/train_robust_agent.py \
-    # --log_dir $result_dir \
-    # --seed $seed \
-    # --algo robot_crowd_ppo \
-    # --env crowd_env_ccp \
-    # --exp_name $ppo_5p_ccp_rvs_circlecross \
-    # --load_config tuned_configs/$ppo_5p_ccp_rvs_circlecross.json \
-    # --cuda_device cuda:1"
 
     "ccp1: scripts/train_robust_agent.py \
     --log_dir $result_dir \
     --seed $seed \
     --algo robot_crowd_ppo \
     --env crowd_env_ccp \
-    --exp_name $ppo_3p_ccp_rvs_room256 \
-    --load_config tuned_configs/$ppo_3p_ccp_rvs_room256.json \
+    --exp_name ppo_CNN_1D_5-5_ccp_rvs_room361 \
+    --load_config train_configs/ppo_CNN_1D_5-5_ccp_rvs_room361.json \
     --cuda_device cuda:1"
     "ccp2: scripts/train_robust_agent.py \
     --log_dir $result_dir \
     --seed $seed \
     --algo robot_crowd_ppo \
     --env crowd_env_ccp \
-    --exp_name $ppo_2p_ccp_rvs_room256 \
-    --load_config tuned_configs/$ppo_2p_ccp_rvs_room256.json \
+    --exp_name ppo_CNN_1D_5-5_ccp_rvs_circlecross \
+    --load_config train_configs/ppo_CNN_1D_5-5_ccp_rvs_circlecross.json \
     --cuda_device cuda:2"
-
-
-    # "wo_d: scripts/train_robust_agent.py --algo robot_crowd_happo_woD --env crowd_env --exp_name robust_navi_ablation_woD --cuda_device cuda:1"
 )
 
 

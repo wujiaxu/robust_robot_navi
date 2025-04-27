@@ -659,6 +659,7 @@ if __name__ == "__main__":
         default="crowd_env",
         choices=[
             "crowd_env",
+            "crowd_env_ccp"
         ],
         help="Environment name. Choose from: crowd_sim",
     )
@@ -689,7 +690,7 @@ if __name__ == "__main__":
     keys = [k[2:] for k in unparsed_args[0::2]]  # remove -- from argument
     values = [process(v) for v in unparsed_args[1::2]]
     unparsed_dict = {k: v for k, v in zip(keys, values)}
-    human_model_args = args = vars(args)  # convert to dict
+    args = vars(args)  # convert to dict
     if args["load_config"] != "":  # load config from existing config file
         with open(args["load_config"], encoding="utf-8") as file:
             all_config = json.load(file)
@@ -699,21 +700,25 @@ if __name__ == "__main__":
         env_args = all_config["env_args"]
     else:  # load config from corresponding yaml file
         algo_args, env_args = get_defaults_yaml_args(args["algo"], args["env"])
-
+    # print(args)
+    # print()
     # load model
     human_model_dir = find_seed_directories(args["human_model_dir"],
                                     algo_args["seed"]["seed"])[0] #use the latest one 
     human_model_config_file = os.path.join(human_model_dir,"config.json")
     with open(human_model_config_file, encoding="utf-8") as file:
         human_model_all_config = json.load(file)
-    human_model_args["algo"] = human_model_all_config["main_args"]["algo"]
-    human_model_args["env"] = human_model_all_config["main_args"]["env"]
+    # human_model_args["algo"] = human_model_all_config["main_args"]["algo"]
+    # human_model_args["env"] = human_model_all_config["main_args"]["env"]
     human_model_algo_args = human_model_all_config["algo_args"]
     human_model_env_args = human_model_all_config["env_args"]
     
     update_args(unparsed_dict, algo_args, env_args)  # update args from command line
     # human_model_algo_args["train"]["model_dir"] = os.path.join(args["human_model_dir"],"models")
-
+    # print(args)
+    # print()
+    # print(env_args)
+    # input()
     # # identify base model
     human_model_algo_args["train"]["model_dir"] = human_model_dir
 

@@ -9,6 +9,8 @@
 **/result_figures/**
 **/results_text/**  
 **/sim2real/** 
+**/drl_vo/model/** 
+**/test_log/** 
 .VSCodeCounter/
 
 ##### Python.gitignore #####

@@ -89,7 +89,7 @@ def draw_discriminator_curve(root,dirs,labels,agent_num=5,figure_name="discrimin
 
 def draw_crowd_success_rate(root,dirs,labels,figure_name="success_rate"):
     key = "eval_crowd_navi_performance/success_rate"
-    fig, ax = plt.subplots(figsize=(5, 5))
+    fig, ax = plt.subplots(figsize=(5, 3))
     for dir,label in zip(dirs,labels):
         dir = Path(root)/Path(dir)
         log_dir_str = find_seed_directories(dir,1)[0]+"/logs"
@@ -97,9 +97,10 @@ def draw_crowd_success_rate(root,dirs,labels,figure_name="success_rate"):
         success_rate = success_rate_step[:,1]*100
         steps = success_rate_step[:,0]
         plt.plot(steps,success_rate,label=label)
-    plt.legend(loc='upper center', bbox_to_anchor=(.5, 0.3), ncol=1,fontsize=10)
+    plt.legend(loc='upper center', bbox_to_anchor=(.5, 0.5), ncol=1,fontsize=10)
     plt.xlabel("steps",fontsize=10)
     plt.ylabel("success rate [%]",fontsize=10)
+    plt.tight_layout()
     plt.savefig("result_figures/{}.png".format(figure_name))
     with PdfPages("result_figures/{}.pdf".format(figure_name)) as pdf:
         pdf.savefig(fig, bbox_inches='tight')
@@ -288,26 +289,39 @@ def test_robot_navi_room361():
             "sfm_10_03_cc_5p",
             "sfm_10_03_r361_5p",
         ],
+        "train_on_ai_4p_ccp_rvs_room361":[
+            "c090_happo_5p_3c_rvs_room361",
+            "c090_happo_5p_3c_rvs_circlecross",
+            "happo_5p_sp_rvs_room361",
+            "happo_5p_sp_rvs_circlecross",
+            "sfm_5_1point5_r361_5p",
+            "sfm_10_03_cc_5p",
+            "sfm_10_03_r361_5p",
+        ]
     }
     test_success_rates={
         "train_on_ai_090_4p_3c_rvs_room361":{},
         "train_on_ai_4p_sp_rvs_room361":{},
-        "train_on_sfm_crowd_room361":{}
+        "train_on_sfm_crowd_room361":{},
+        "train_on_ai_4p_ccp_rvs_room361":{}
     }
     test_collision_rates={
         "train_on_ai_090_4p_3c_rvs_room361":{},
         "train_on_ai_4p_sp_rvs_room361":{},
-        "train_on_sfm_crowd_room361":{}
+        "train_on_sfm_crowd_room361":{},
+        "train_on_ai_4p_ccp_rvs_room361":{}
     }
     test_ave_navitimes={
         "train_on_ai_090_4p_3c_rvs_room361":{},
         "train_on_ai_4p_sp_rvs_room361":{},
-        "train_on_sfm_crowd_room361":{}
+        "train_on_sfm_crowd_room361":{},
+        "train_on_ai_4p_ccp_rvs_room361":{}
     }
     test_navitimes={
         "train_on_ai_090_4p_3c_rvs_room361":{},
         "train_on_ai_4p_sp_rvs_room361":{},
-        "train_on_sfm_crowd_room361":{}
+        "train_on_sfm_crowd_room361":{},
+        "train_on_ai_4p_ccp_rvs_room361":{}
     }
     for model in test_target:
         for d in test_target[model]:
@@ -351,9 +365,9 @@ def test_robot_navi_room361():
             test_navitimes[model][d] = average_time_0
             # print(average_time_0)
             # input()
-    # print(test_success_rates)
-    # print(test_collision_rates)
-    # print(test_ave_navitimes)
+    print(test_success_rates)
+    print(test_collision_rates)
+    print(test_ave_navitimes)
     for k1 in test_success_rates:
         for k2 in test_success_rates:
             if k1==k2:continue
@@ -853,6 +867,12 @@ def test_crowd_sim_editable_factor_time():
     return 
 
 if __name__ =="__main__":
+    # 0. debug
+    # p1 = perform_z_test([0.9609],[0.9289],N=3500)
+    # p2 = perform_z_test([0.4674],[0.41829],N=3500)
+    # p3 = perform_z_test([0.4674],[0.38886],N=3500)
+    # p4 = perform_z_test([0.4674],[0.21514],N=3500)
+    # print(p1,p2,p3,p4)
     # 1. compare with and without constraints
     # test_cmdp_crowd_sim()
     # shows: the proposed method well balanced performance and diversity across all scenarios
@@ -897,7 +917,7 @@ if __name__ =="__main__":
          "happo_10p_3c_rvs_circlecross",],
         ["With Lagrange multiplier 5H","Fixed reward weight 5H",
           "With Lagrange multiplier 10H","Fixed reward weight 10H"],
-        figure_name="ablation_test_lagrange_success_rate_circlecross"
+        figure_name="new_ablation_test_lagrange_success_rate_circlecross"
     )
     # draw_crowd_success_rate(
     #     "results_seed_1/crowd_env/crowd_navi/robot_crowd_happo",
@@ -914,5 +934,8 @@ if __name__ =="__main__":
     proposed_10p = "results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_10p_3c_rvs_circlecross"
     ablation_5p = "results_codeVer_1_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_ppo_5p_3c_rvs_circlecross"
     ablation_10p = "results_codeVer_1_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_ppo_10p_3c_rvs_circlecross"
-    draw_crowd_success_rate(root,[proposed_5p,ablation_5p,proposed_10p,ablation_10p],["CTDE 5H","Independent 5H","CTDE 10H","Independent 10H"],"ablation_test_CTDE")
-    # draw_crowd_success_rate(root,[proposed_10p,ablation_10p],["Proposed","Ablation"],"ablation_test_CTDE_10p")
+    draw_crowd_success_rate(root,
+                            [proposed_5p,ablation_5p,proposed_10p,ablation_10p],
+                            ["CTDE 5H","Independent 5H","CTDE 10H","Independent 10H"],
+                            "new_ablation_test_CTDE")
+    # # draw_crowd_success_rate(root,[proposed_10p,ablation_10p],["Proposed","Ablation"],"ablation_test_CTDE_10p")

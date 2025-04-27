@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="training_diagram.png" width="300px" height="auto"/>
+  <img src="training_diagram_2.png" width="300px" height="auto"/>
 </div>
 
 <h1 align="center"> Diversity-aware Crowd Model for Robust Robot Navigation in Human Populated Environment</h1>

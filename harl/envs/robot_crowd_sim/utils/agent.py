@@ -64,6 +64,7 @@ class Agent(object):
         self.vy = vy
         self.theta = theta
         self.w = w
+        self.v = np.linalg.norm((vx,vy))
         self.dg = np.linalg.norm((gx-px,gy-py))
         dxy = np.array(self.get_goal_position())-np.array(self.get_position())
         goal_direction = np.arctan2(dxy[1],dxy[0])
@@ -171,14 +172,17 @@ class Agent(object):
             if self.kinematics == 'holonomic':
                 self.vx = action.vx
                 self.vy = action.vy
+                self.v = np.linalg.norm((self.vx,self.vy))
             elif self.kinematics == 'unicycle':
                 self.vx = action.v * np.cos(self.theta)
                 self.vy = action.v * np.sin(self.theta)
                 self.w  = action.w
+                self.v = action.v
             else:
                 self.theta = (self.theta + action.r) % (2 * np.pi)
                 self.vx = action.v * np.cos(self.theta)
                 self.vy = action.v * np.sin(self.theta)
+                self.v = np.linalg.norm((self.vx,self.vy))
         self.collider = Point(self.px, self.py).buffer(self.radius)
         self.dg = np.linalg.norm((self.gx-self.px,self.gy-self.py))
 

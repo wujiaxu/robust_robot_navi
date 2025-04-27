@@ -226,7 +226,7 @@ if __name__ == "__main__":
     """test an algorithm."""
     import argparse
     import json
-    from harl.utils.configs_tools import get_defaults_yaml_args, update_args
+    from harl.utils.configs_tools import get_defaults_yaml_args, update_args,find_seed_directories
     import os
 
     """Main function."""
@@ -241,6 +241,9 @@ if __name__ == "__main__":
             "robot_crowd_happo"
         ],
         help="Algorithm name. Choose from: robot_crowd_happo.",
+    )
+    parser.add_argument(
+        "--seed", type=int, default=1, help="model seed."
     )
     parser.add_argument(
         "--human_policy", type=str, default="SFM", help="human policy."
@@ -296,7 +299,8 @@ if __name__ == "__main__":
     args, unparsed_args = parser.parse_known_args()
     test_episode = args.test_episode
     print(os.getcwd())
-    config_file = os.path.join(args.model_dir,"config.json")
+    model_dir = find_seed_directories(args.model_dir,args.seed)[0]
+    config_file = os.path.join(model_dir,"config.json")
     def process(arg):
         try:
             return eval(arg)
@@ -317,7 +321,7 @@ if __name__ == "__main__":
     env_args = all_config["env_args"]
     
     update_args(unparsed_dict, algo_args, env_args)  # update args from command line
-    algo_args["train"]["model_dir"] = os.path.join(args["model_dir"],"models")
+    algo_args["train"]["model_dir"] = os.path.join(model_dir,"models")
     algo_args["render"]["render_episodes"] = test_episode
     runner = OnPolicyTestRunner(args, algo_args, env_args)
     runner.run()

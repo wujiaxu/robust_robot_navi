@@ -423,30 +423,86 @@ def create_navi_eval_config():
     return
 
 def create_ablation_study_config():
-    create_config(save_dir = "./train_configs",critic_model_id = 1,
+    # create_config(save_dir = "./train_configs",critic_model_id = 1,
+    #     human_pref_type_id = 0,
+    #     scenario_id = 3,
+    #     max_episode_length = 60,
+    #     use_discriminator = False,
+    #     human_num = 12,
+    #     random_human_num = True,
+    #     minimum_human_num = 6,
+    #     human_preference_vector_dim= 3,
+    #     centralized_critic = False,  
+    # )
+    # create_config(save_dir = "./train_configs",critic_model_id = 1,
+    #     human_pref_type_id = 0,
+    #     scenario_id = 3,
+    #     max_episode_length = 60,
+    #     use_discriminator = True,
+    #     human_num = 12,
+    #     random_human_num = True,
+    #     minimum_human_num = 6,
+    #     human_preference_vector_dim= 3,
+    #     centralized_critic = False,  
+    # )
+
+    create_config(save_dir = "./train_configs",critic_model_id = 2,
         human_pref_type_id = 0,
-        scenario_id = 3,
-        max_episode_length = 60,
-        use_discriminator = False,
-        human_num = 12,
-        random_human_num = True,
-        minimum_human_num = 6,
-        human_preference_vector_dim= 3,
+        scenario_id = 1,
+        use_discriminator = True,
+        human_num = 2,
+        minimum_human_num = 2,
+        human_preference_vector_dim= 6,
         centralized_critic = False,  
     )
-    create_config(save_dir = "./train_configs",critic_model_id = 1,
+    create_config(save_dir = "./train_configs",critic_model_id = 2,
         human_pref_type_id = 0,
-        scenario_id = 3,
-        max_episode_length = 60,
+        scenario_id = 1,
         use_discriminator = True,
-        human_num = 12,
-        random_human_num = True,
-        minimum_human_num = 6,
-        human_preference_vector_dim= 3,
+        human_num = 3,
+        minimum_human_num = 2,
+        human_preference_vector_dim= 6,
         centralized_critic = False,  
     )
 
+
     return
+
+def create_ccp_eval_config():
+
+    create_config(
+        save_dir = "./train_configs",
+        critic_model_id = 2,
+        human_pref_type_id = 1,
+        scenario_id = 0, #2
+        max_episode_length = 48,
+        use_discriminator = True,
+        human_num = 5,
+        random_human_num = False,
+        minimum_human_num = 5,
+        human_preference_vector_dim= 2,
+        centralized_critic = False,  
+        num_env_steps=4000000,
+    )
+    create_config(
+        save_dir = "./train_configs",
+        critic_model_id = 2,
+        human_pref_type_id = 1,
+        scenario_id = 2,
+        max_episode_length = 48,
+        use_discriminator = True,
+        human_num = 5,
+        random_human_num = False,
+        minimum_human_num = 5,
+        human_preference_vector_dim= 2,
+        centralized_critic = False,  
+        num_env_steps=4000000,
+    )
+
+
+    return 
+
 if __name__ == "__main__":
-    create_pedsim_eval_config()
+    # create_pedsim_eval_config()
     create_ablation_study_config()
+    # create_ccp_eval_config()

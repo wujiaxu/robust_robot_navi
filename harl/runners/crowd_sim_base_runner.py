@@ -223,7 +223,7 @@ class CrowdSimBaseRunner:
                     infos,
                     available_actions,
                 ) = self.envs.step(actions)
-                if self.use_discriminator:
+                if self.use_discriminator and self.args["env"]=="crowd_env":
                     rewards = rewards + aux_rewards[:,:,np.newaxis]*self.algo_args["algo"]["intrinsic_reward_scale"]
                 # obs: (n_threads, n_agents, obs_dim)
                 # share_obs: (n_threads, n_agents, share_obs_dim)
@@ -290,8 +290,14 @@ class CrowdSimBaseRunner:
             new_share_obs = self.critic_buffer.human_feature_extractor(share_obs[:, 0].copy())
             self.critic_buffer.share_obs[0] = new_share_obs
         elif self.state_type == "FP":
-            new_share_obs = self.critic_buffer.human_feature_extractor(share_obs.copy())
-            self.critic_buffer.share_obs[0] = new_share_obs
+            if self.centralized:
+                new_share_obs = self.critic_buffer.human_feature_extractor(share_obs.copy())
+                self.critic_buffer.share_obs[0] = new_share_obs
+            else:
+                # TODO
+                # new_obs = self.critic_buffer.human_feature_extractor(obs.copy())
+                # self.critic_buffer.share_obs[0] = new_obs
+                self.critic_buffer.share_obs[0] = obs.copy()
 
     @torch.no_grad()
     def collect(self, step):
@@ -320,7 +326,7 @@ class CrowdSimBaseRunner:
             rnn_state_collector.append(_t2n(rnn_state))
 
             #TODO implement
-            if not self.use_discriminator:
+            if not self.use_discriminator or self.args["env"]=="crowd_env_ccp":
                 pass
             else:
                 loss = self.actor[agent_id].get_aux_reward(
@@ -704,7 +710,7 @@ class CrowdSimBaseRunner:
 
             actor_train_infos[agent_id]= actor_train_info
         average_actor_train_info = {}
-        for key in actor_train_info[0]:
+        for key in actor_train_infos[0]:
             value = []
             for agent_id in range(self.num_agents):
                 value.append(actor_train_infos[agent_id][key])

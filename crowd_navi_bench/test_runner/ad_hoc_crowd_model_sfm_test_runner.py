@@ -92,7 +92,7 @@ class OnPolicyTestRunner:
         algo_args["algo"]["use_discriminator"] = False #since we test robot
         
 
-        self.envs.agents[0].v_pref = 0.5
+        # self.envs.agents[0].v_pref = 0.5
         
         self.rec_policy = SocialForce(self.envs,self.args["sfm_v0"],self.args["sfm_sigma"],self.args["sfm_initial_speed"])
         

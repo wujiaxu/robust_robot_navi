@@ -26,23 +26,51 @@
 #         --exp_name ai_crowdsim_7p_rvs_3c_circlecross \
 #         --model_dir /home/dl/wu_ws/robust_robot_navi/results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_5p_3c_rvs_circlecross 
 
-# python test_runner/ped_sim_test_runner.py \
+# python test_runner/ped_sim_test_runner_dynamic_preference.py \
 #         --log_dir ped_sim \
 #         --scenario circle_cross \
 #         --human_num 5 \
 #         --test_episode 10 \
 #         --cuda_device cuda:2 \
-#         --exp_name ai_crowdsim_5p_rvs_3c_circlecross \
+#         --exp_name ai_crowdsim_5p_rvs_3c_circlecross_dynamic_preference \
 #         --model_dir /home/dl/wu_ws/robust_robot_navi/results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_5p_3c_rvs_circlecross 
 
-python test_runner/ped_sim_test_runner.py \
+# python test_runner/ped_sim_test_runner_static_human.py \
+#         --log_dir ped_sim \
+#         --scenario circle_cross \
+#         --human_num 5 \
+#         --test_episode 10 \
+#         --cuda_device cuda:2 \
+#         --exp_name ai_crowdsim_5p_rvs_3c_circlecross_static_human \
+#         --model_dir /home/dl/wu_ws/robust_robot_navi/results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_5p_3c_rvs_circlecross 
+
+# python test_runner/ped_sim_test_runner_dynamic_spawn.py \
+#         --log_dir ped_sim \
+#         --scenario circle_cross \
+#         --human_num 5 \
+#         --test_episode 10 \
+#         --cuda_device cuda:2 \
+#         --exp_name ai_crowdsim_5p_rvs_3c_circlecross_dynamic_spawn \
+#         --model_dir /home/dl/wu_ws/robust_robot_navi/results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_5p_3c_rvs_circlecross 
+
+python test_runner/ped_sim_test_runner_mix_sdd.py \
         --log_dir ped_sim \
-        --scenario room_361 \
+        --scenario circle_cross \
         --human_num 5 \
         --test_episode 10 \
         --cuda_device cuda:2 \
-        --exp_name ai_crowdsim_5p_rvs_3c_room361 \
-        --model_dir /home/dl/wu_ws/robust_robot_navi/results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_5p_3c_rvs_room361 
+        --exp_name ai_crowdsim_5p_rvs_3c_circlecross_mix_sdd \
+        --model_dir /home/dl/wu_ws/robust_robot_navi/results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_5p_3c_rvs_circlecross 
+
+
+# python test_runner/ped_sim_test_runner.py \
+#         --log_dir ped_sim \
+#         --scenario room_361 \
+#         --human_num 5 \
+#         --test_episode 10 \
+#         --cuda_device cuda:2 \
+#         --exp_name ai_crowdsim_5p_rvs_3c_room361 \
+#         --model_dir /home/dl/wu_ws/robust_robot_navi/results_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_5p_3c_rvs_room361 
 
 # python test_runner/ped_sim_test_runner.py \
 #         --log_dir ped_sim \
@@ -70,9 +98,13 @@ python test_runner/ped_sim_test_runner.py \
 #         --cuda_device cuda:2 \
 #         --exp_name ai_crowdsim_6p_rvs_6c_room256 \
 #         --model_dir /home/dl/wu_ws/robust_robot_navi/results_ver_2_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_CNN_1D_6-6_6c_rvs_room256
-
-# conda_env=url_navi
-# declare -a sessions_and_scripts=(
+# python test_runner/ped_sim_mocap_data_test_runner.py \
+#         --log_dir ped_sim \
+#         --exp_name ai_crowdsim_2p_rvs_3c_room256 \
+#         --model_dir /home/dl/wu_ws/robust_robot_navi/room256_results_ver_1_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_2p_3c_rvs_room256 \
+#         --cuda_device cuda:0
+conda_env=url_navi
+declare -a sessions_and_scripts=(
 #     "s1: test_runner/ped_sim_mocap_data_test_runner.py \
 #         --log_dir ped_sim \
 #         --exp_name ai_crowdsim_2p_rvs_6c_room256 \
@@ -99,16 +131,49 @@ python test_runner/ped_sim_test_runner.py \
 
 #     "s5: test_runner/ad_hoc_ped_sim_mocap_data_test_runner.py \
 #         --log_dir ped_sim \
+#         --human_policy ORCA \
 #         --exp_name ad_hoc_crowdsim_2p_rvs_pt_room256 \
 #         --model_dir /home/dl/wu_ws/robust_robot_navi/room256_results_ver_1_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_2p_6c_rvs_room256 \
 #         --cuda_device cuda:2"
 
 #     "s6: test_runner/ad_hoc_ped_sim_mocap_data_test_runner.py \
 #         --log_dir ped_sim \
+#         --human_policy ORCA \
 #         --exp_name ad_hoc_crowdsim_3p_rvs_pt_room256 \
 #         --model_dir /home/dl/wu_ws/robust_robot_navi/room256_results_ver_1_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_3p_6c_rvs_room256 \
 #         --cuda_device cuda:2"
-# )
+
+#     "s7: test_runner/ad_hoc_ped_sim_mocap_data_test_runner.py \
+#         --log_dir ped_sim \
+#         --human_policy SFM \
+#         --sfm_v0 10 \
+#         --sfm_sigma 0.3 \
+#         --exp_name ad_hoc_crowdsim_2p_rvs_sfm_room256 \
+#         --model_dir /home/dl/wu_ws/robust_robot_navi/room256_results_ver_1_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_2p_6c_rvs_room256 \
+#         --cuda_device cuda:2"
+
+#     "s8: test_runner/ad_hoc_ped_sim_mocap_data_test_runner.py \
+#         --log_dir ped_sim \
+#         --human_policy SFM \
+#         --sfm_v0 10 \
+#         --sfm_sigma 0.3 \
+#         --exp_name ad_hoc_crowdsim_3p_rvs_sfm_room256 \
+#         --model_dir /home/dl/wu_ws/robust_robot_navi/room256_results_ver_1_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_3p_6c_rvs_room256 \
+#         --cuda_device cuda:2"
+
+    "s9: test_runner/ped_sim_mocap_data_test_runner.py \
+        --log_dir ped_sim \
+        --exp_name ai_crowdsim_2p_rvs_3c_room256 \
+        --model_dir /home/dl/wu_ws/robust_robot_navi/room256_results_ver_1_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_2p_3c_rvs_room256 \
+        --cuda_device cuda:0"
+
+    # "s10: test_runner/ped_sim_mocap_data_test_runner.py \
+    #     --log_dir ped_sim \
+    #     --exp_name ai_crowdsim_3p_rvs_3c_room256 \
+    #     --model_dir /home/dl/wu_ws/robust_robot_navi/room256_results_ver_1_seed_1/crowd_env/crowd_navi/robot_crowd_happo/c0.90_happo_3p_3c_rvs_room256 \
+    #     --cuda_device cuda:0"
+
+)
 
 # for item in "${sessions_and_scripts[@]}"
 # do

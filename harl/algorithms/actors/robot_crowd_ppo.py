@@ -58,6 +58,15 @@ class RobotCrowdPPO(OnPolicyBase):
         self.use_max_grad_norm = args["use_max_grad_norm"]
         self.max_grad_norm = args["max_grad_norm"]
     
+    # def get_aux_reward(self,obs,
+    #                         rnn_states,
+    #                         actions,
+    #                         active_masks)->torch.Tensor:
+    #     # if self.discrim is None:
+    #     #     raise ValueError 
+        
+    #     return torch.zeros((obs.))
+    
     def evaluate_actions(
         self,
         obs,

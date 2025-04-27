@@ -3,8 +3,8 @@ from crowd_navi_bench.crowd_policy import socialforcelib
 from harl.envs.robot_crowd_sim.crowd_env import RobotCrowdSim
 
 class SocialForce():
-    def __init__(self,env:RobotCrowdSim,v0=5,sigma=1.5,initial_speed = 1.5):
-        self.time_step = 0.25
+    def __init__(self,env:RobotCrowdSim,v0=5,sigma=1.5,initial_speed = 1.5,time_step = 0.25):
+        self.time_step = time_step
         self.name = 'SocialForce'
         self.trainable = False
         self.multiagent_training = None
@@ -16,6 +16,7 @@ class SocialForce():
         self.static_obstacle = None
         self.env = env
         self.set_static_obstacle()
+        print("time step:",self.time_step)
         print("using sfm parameter:",v0,sigma)
 
     def set_static_obstacle(self):
@@ -25,6 +26,7 @@ class SocialForce():
         """
         x,y = self.env._map.getBoundary()
         obstacles = [[(x[i],y[i]) for i in range(len(x))]]
+        print("obstacles:",obstacles)
         self.static_obstacle = []
         for polygon in obstacles:
             #polygon: a loop of a list of vertices 
@@ -67,7 +69,7 @@ class SocialForce():
                                     delta_t=self.time_step, 
                                     initial_speed=self.initial_speed,
                                     v0=self.v0, sigma=self.sigma,
-                                    ped_space=socialforcelib.PedSpacePotential(self.static_obstacle,u0=5,r=0.2))
+                                    ped_space=socialforcelib.PedSpacePotential(self.static_obstacle,u0=5,r=0.2))#,u0=5,r=0.2
         sim.step()
         
         #clip according to preferred speed
